@@ -126,6 +126,7 @@
         border-radius: 16px;
         padding: 20px;
         background: #fff;
+        position: relative;
       }
 
       .calendar-controls {
@@ -160,6 +161,112 @@
         text-align: center;
         margin-top: 16px;
         gap: 6px;
+      }
+
+      .calendar-footer {
+        margin-top: 18px;
+        display: flex;
+        justify-content: flex-start;
+      }
+
+      .timezone-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid var(--panel-border);
+        background: #f8f9fb;
+        color: var(--text-primary);
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.02);
+      }
+
+      .timezone-btn .globe {
+        width: 18px;
+        height: 18px;
+        color: var(--text-secondary);
+      }
+
+      .timezone-popover {
+        position: absolute;
+        left: 0;
+        bottom: -12px;
+        transform: translateY(100%);
+        width: min(340px, calc(100% - 20px));
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.18);
+        padding: 16px;
+        z-index: 20;
+      }
+
+      .timezone-popover header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .timezone-search {
+        flex: 1;
+        border: 1px solid var(--panel-border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+
+      .timezone-close {
+        border: none;
+        background: transparent;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--text-secondary);
+      }
+
+      .timezone-list {
+        max-height: 320px;
+        overflow-y: auto;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .timezone-list li {
+        width: 100%;
+      }
+
+      .timezone-item {
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        text-align: left;
+        background: #fff;
+        cursor: pointer;
+        width: 100%;
+      }
+
+      .timezone-item strong {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 2px;
+      }
+
+      .timezone-item span {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .timezone-empty {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 14px;
       }
 
       .weekdays span {
@@ -501,6 +608,32 @@
               <span>Su</span>
             </div>
             <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="calendar-footer">
+              <button type="button" class="timezone-btn" id="timezoneButton">
+                <svg class="globe" viewBox="0 0 20 20" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M10 1.25a8.75 8.75 0 1 0 0 17.5 8.75 8.75 0 0 0 0-17.5Zm6.99 8h-2.67c-.15-2.23-.9-4.27-2.02-5.77a7.28 7.28 0 0 1 4.69 5.77Zm-7.24-6.3v6.3H6.52c.16-2.05.87-4.01 1.94-5.54.42-.6.86-.68 1.29-.76Zm0 7.55v6.3c-.43-.08-.87-.17-1.29-.76a12 12 0 0 1-1.94-5.54Zm1.25 6.3v-6.3h3.53c-.16 2.05-.87 4.02-1.94 5.54-.42.6-.86.68-1.59.76Zm0-7.55V2.95c.73.08 1.17.16 1.59.76 1.07 1.52 1.78 3.5 1.94 5.54Zm-5.05-5.8c-1.12 1.5-1.87 3.54-2.02 5.77H2.26a7.28 7.28 0 0 1 4.69-5.77ZM2.26 10h2.67c.15 2.23.9 4.27 2.02 5.77a7.28 7.28 0 0 1-4.69-5.77Zm9.78 5.77c1.12-1.5 1.87-3.54 2.02-5.77h2.67a7.28 7.28 0 0 1-4.69 5.77Z"
+                  />
+                </svg>
+                <span id="timezoneLabel">Loading…</span>
+              </button>
+            </div>
+            <div class="timezone-popover" id="timezonePopover" hidden>
+              <header>
+                <input
+                  type="search"
+                  class="timezone-search"
+                  id="timezoneSearch"
+                  placeholder="Search city or timezone"
+                />
+                <button type="button" class="timezone-close" id="timezoneClose" aria-label="Close">
+                  &times;
+                </button>
+              </header>
+              <ul class="timezone-list" id="timezoneList"></ul>
+              <div class="timezone-empty" id="timezoneEmpty" hidden>No matches found.</div>
+            </div>
           </div>
             <div class="selection-card">
               <div class="selection-header">
@@ -550,6 +683,13 @@
         const selectionEmpty = document.getElementById("selectionEmpty");
         const selectionCount = document.getElementById("selectionCount");
         const timeToggle = document.getElementById("timeToggle");
+        const timezoneButton = document.getElementById("timezoneButton");
+        const timezoneLabel = document.getElementById("timezoneLabel");
+        const timezonePopover = document.getElementById("timezonePopover");
+        const timezoneSearch = document.getElementById("timezoneSearch");
+        const timezoneList = document.getElementById("timezoneList");
+        const timezoneEmpty = document.getElementById("timezoneEmpty");
+        const timezoneClose = document.getElementById("timezoneClose");
 
         const MINUTES_IN_DAY = 24 * 60;
         const TIME_STEP = 15;
@@ -559,6 +699,84 @@
           (_, idx) => idx * TIME_STEP
         );
         const DEFAULT_DURATION = DEFAULT_SLOT.end - DEFAULT_SLOT.start;
+        const NORMALIZE = (value) =>
+          value
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
+        const TIMEZONE_CATALOG = [
+          {
+            zone: "UTC",
+            offset: "UTC±00:00",
+            cities: ["Reykjavik", "Accra", "Dakar"],
+          },
+          {
+            zone: "Europe/London",
+            offset: "UTC+00:00",
+            cities: ["London", "Dublin", "Lisbon"],
+          },
+          {
+            zone: "Europe/Berlin",
+            offset: "UTC+01:00",
+            cities: ["Berlin", "Paris", "Madrid", "Rome"],
+          },
+          {
+            zone: "Europe/Moscow",
+            offset: "UTC+03:00",
+            cities: ["Moscow", "Istanbul", "Doha"],
+          },
+          {
+            zone: "Asia/Dubai",
+            offset: "UTC+04:00",
+            cities: ["Dubai", "Abu Dhabi", "Muscat"],
+          },
+          {
+            zone: "Asia/Kolkata",
+            offset: "UTC+05:30",
+            cities: ["Mumbai", "Delhi", "Bengaluru"],
+          },
+          {
+            zone: "Asia/Singapore",
+            offset: "UTC+08:00",
+            cities: ["Singapore", "Kuala Lumpur", "Perth"],
+          },
+          {
+            zone: "Asia/Tokyo",
+            offset: "UTC+09:00",
+            cities: ["Tokyo", "Seoul", "Osaka"],
+          },
+          {
+            zone: "Australia/Sydney",
+            offset: "UTC+10:00",
+            cities: ["Sydney", "Melbourne", "Brisbane"],
+          },
+          {
+            zone: "America/New_York",
+            offset: "UTC-05:00",
+            cities: ["New York", "Washington DC", "Toronto", "Miami"],
+          },
+          {
+            zone: "America/Chicago",
+            offset: "UTC-06:00",
+            cities: ["Chicago", "Dallas", "Mexico City"],
+          },
+          {
+            zone: "America/Denver",
+            offset: "UTC-07:00",
+            cities: ["Denver", "Phoenix", "Salt Lake City"],
+          },
+          {
+            zone: "America/Los_Angeles",
+            offset: "UTC-08:00",
+            cities: ["Los Angeles", "San Francisco", "Seattle", "Vancouver"],
+          },
+          {
+            zone: "America/Sao_Paulo",
+            offset: "UTC-03:00",
+            cities: ["Sao Paulo", "Rio de Janeiro", "Buenos Aires"],
+          },
+        ];
 
         const toLocalISO = (date) => {
           const year = date.getFullYear();
@@ -572,9 +790,60 @@
           return new Date(year, month - 1, day);
         };
 
+        const updateTimezoneLabel = () => {
+          timezoneLabel.textContent = currentTimezone;
+        };
+
+        const hideTimezonePopover = () => {
+          timezonePopover.hidden = true;
+        };
+
+        const showTimezonePopover = () => {
+          timezonePopover.hidden = false;
+          timezoneSearch.value = "";
+          renderTimezoneList();
+          requestAnimationFrame(() => timezoneSearch.focus());
+        };
+
+        const setTimezone = (zone) => {
+          currentTimezone = zone;
+          updateTimezoneLabel();
+          hideTimezonePopover();
+        };
+
+        const renderTimezoneList = () => {
+          const query = NORMALIZE(timezoneSearch.value.trim());
+          timezoneList.innerHTML = "";
+          const matches = TIMEZONE_CATALOG.filter((entry) => {
+            if (!query) return true;
+            if (NORMALIZE(entry.zone).includes(query)) return true;
+            return entry.cities.some((city) => NORMALIZE(city).includes(query));
+          });
+
+          timezoneEmpty.hidden = matches.length > 0;
+
+          if (!matches.length) {
+            return;
+          }
+
+          matches.forEach((entry) => {
+            const li = document.createElement("li");
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "timezone-item";
+            button.innerHTML = `<strong>${entry.offset} • ${entry.zone}</strong><span>${entry.cities.join(
+              " · "
+            )}</span>`;
+            button.addEventListener("click", () => setTimezone(entry.zone));
+            li.appendChild(button);
+            timezoneList.appendChild(li);
+          });
+        };
+
         const selectedDates = new Map();
         const today = new Date();
         let currentView = new Date(today.getFullYear(), today.getMonth(), 1);
+        let currentTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
         const formatDisplayDate = (date, options) =>
           new Intl.DateTimeFormat("en-US", options).format(date);
@@ -822,6 +1091,40 @@
           });
         });
 
+        timezoneButton.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (timezonePopover.hidden) {
+            showTimezonePopover();
+          } else {
+            hideTimezonePopover();
+          }
+        });
+
+        timezoneClose.addEventListener("click", hideTimezonePopover);
+
+        timezoneSearch.addEventListener("input", renderTimezoneList);
+
+        timezonePopover.addEventListener("click", (event) => event.stopPropagation());
+
+        document.addEventListener("click", (event) => {
+          if (
+            timezonePopover.hidden ||
+            timezonePopover.contains(event.target) ||
+            timezoneButton.contains(event.target)
+          ) {
+            return;
+          }
+          hideTimezonePopover();
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && !timezonePopover.hidden) {
+            hideTimezonePopover();
+          }
+        });
+
+        updateTimezoneLabel();
+        renderTimezoneList();
         rebuildCalendar();
         renderSelection();
       })();
