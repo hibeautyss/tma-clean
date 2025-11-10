@@ -56,6 +56,14 @@ const TIMEZONE_CATALOG = [
 ];
 
 let refs = {};
+let saveTimer = null;
+
+const getStorageId = () => getState().telegramUser?.id ?? "guest";
+
+const schedulePersist = () => {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persistState, 200);
+};
 
 const formatDisplayDate = (date, options) =>
   new Intl.DateTimeFormat("en-US", options).format(date);
@@ -163,6 +171,7 @@ const handleDateToggle = (iso) => {
     }
   }
   renderAll();
+  schedulePersist();
 };
 
 const handleMonthNav = (event) => {
@@ -172,6 +181,7 @@ const handleMonthNav = (event) => {
   currentView.setMonth(currentView.getMonth() + delta);
   updateState({ currentView });
   renderAll();
+  schedulePersist();
 };
 
 const handleTimeToggleChange = (checked) => {
@@ -180,11 +190,13 @@ const handleTimeToggleChange = (checked) => {
     getState().selectedDates.forEach((_, iso) => ensureDefaultSlot(iso));
   }
   renderAll();
+  schedulePersist();
 };
 
 const handleAddSlot = (iso) => {
   appendSlot(iso);
   renderAll();
+  schedulePersist();
 };
 
 const handleRemoveSlot = (iso, index) => {
@@ -192,6 +204,7 @@ const handleRemoveSlot = (iso, index) => {
   if (!entry) return;
   entry.slots.splice(index, 1);
   renderAll();
+  schedulePersist();
 };
 
 const handleSlotChange = (iso, index, type, value) => {
@@ -214,6 +227,7 @@ const handleSlotChange = (iso, index, type, value) => {
     }
   }
   renderAll();
+  schedulePersist();
 };
 
 const filterTimezones = (query) => {
@@ -244,12 +258,14 @@ const handleTimezoneButtonClick = (event) => {
 const handleTimezoneSearch = (value) => {
   updateState({ timezoneSearch: value });
   renderTimezoneList(filterTimezones(value), handleTimezoneSelect);
+  schedulePersist();
 };
 
 const handleTimezoneSelect = (zone) => {
   updateState({ timezone: zone });
   setTimezonePopoverVisible(false);
   setTimezoneLabel(zone);
+  schedulePersist();
 };
 
 const handleCreatePoll = () => {
@@ -292,10 +308,10 @@ const hydrateState = async () => {
   const user = getTelegramUser();
   if (user) {
     updateState({ telegramUser: user });
-    const savedState = await loadUserState(user.id);
-    if (savedState) {
-      updateState(savedState);
-    }
+  }
+  const savedState = await loadUserState(user?.id ?? "guest");
+  if (savedState) {
+    updateState(savedState);
   }
   const today = new Date();
   updateState({
@@ -305,10 +321,7 @@ const hydrateState = async () => {
 };
 
 const persistState = () => {
-  const { telegramUser } = getState();
-  if (telegramUser) {
-    saveUserState(telegramUser.id, getState());
-  }
+  saveUserState(getStorageId(), getState());
 };
 
 const bootstrap = async () => {
