@@ -36,24 +36,6 @@
         padding: 0 16px;
       }
 
-      .hero {
-        display: flex;
-        gap: 32px;
-        align-items: center;
-        background: var(--panel-bg);
-        border: 1px solid var(--panel-border);
-        border-radius: 20px;
-        padding: 32px;
-        box-shadow: var(--shadow);
-        margin-bottom: 24px;
-      }
-
-      .hero h1 {
-        margin: 8px 0 12px;
-        font-size: 32px;
-        line-height: 1.2;
-      }
-
       .eyebrow {
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -61,89 +43,6 @@
         font-weight: 600;
         color: var(--text-secondary);
         margin: 0;
-      }
-
-      .hero p {
-        margin: 0;
-        color: var(--text-secondary);
-      }
-
-      .user-card {
-        margin-left: auto;
-        background: #f8f9fb;
-        border: 1px solid var(--panel-border);
-        border-radius: 16px;
-        padding: 16px;
-        min-width: 220px;
-      }
-
-      .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 12px;
-        font-weight: 600;
-        color: #344054;
-        background: #e4e7ec;
-      }
-
-      .status-pill::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #98a2b3;
-      }
-
-      .status-pill[data-state="connected"] {
-        background: #ecfdf3;
-        color: #027a48;
-      }
-
-      .status-pill[data-state="connected"]::before {
-        background: #12b76a;
-      }
-
-      .status-pill[data-state="warning"] {
-        background: #fff4e5;
-        color: #b54708;
-      }
-
-      .status-pill[data-state="warning"]::before {
-        background: #f79009;
-      }
-
-      .user-meta {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        margin-top: 14px;
-      }
-
-      .avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #d0e6ff, #eff4ff);
-        color: #155eef;
-        font-weight: 600;
-        font-size: 18px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .user-name {
-        margin: 0 0 4px;
-        font-weight: 600;
-      }
-
-      .user-username {
-        margin: 0;
-        color: var(--text-secondary);
-        font-size: 14px;
       }
 
       .panel {
@@ -217,31 +116,14 @@
 
       .view-switcher {
         display: inline-flex;
-        background: #f8f9fb;
+        align-items: center;
+        padding: 10px 16px;
         border: 1px solid var(--panel-border);
         border-radius: 12px;
-        overflow: hidden;
-      }
-
-      .view-switcher button {
-        border: none;
-        background: transparent;
+        background: #f8f9fb;
         font-size: 14px;
         font-weight: 600;
-        padding: 10px 16px;
-        cursor: pointer;
         color: var(--text-secondary);
-      }
-
-      .view-switcher button.active {
-        background: #fff;
-        color: var(--accent);
-        box-shadow: inset 0 0 0 1px var(--accent);
-      }
-
-      .view-switcher button:disabled {
-        cursor: not-allowed;
-        opacity: 0.5;
       }
 
       .calendar-body {
@@ -407,15 +289,6 @@
       }
 
       @media (max-width: 840px) {
-        .hero {
-          flex-direction: column;
-          text-align: center;
-        }
-
-        .user-card {
-          width: 100%;
-        }
-
         .calendar-body {
           grid-template-columns: 1fr;
         }
@@ -439,24 +312,6 @@
   </head>
   <body>
     <main>
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Meeting planner</p>
-          <h1>Plan a meeting in seconds</h1>
-          <p>We automatically use your Telegram profile so you can start scheduling right away.</p>
-        </div>
-        <div class="user-card">
-          <span class="status-pill" id="connectionStatus">Connecting to Telegram…</span>
-          <div class="user-meta">
-            <div class="avatar" id="userAvatar">--</div>
-            <div>
-              <p class="user-name" id="userName">Guest</p>
-              <p class="user-username" id="userUsername">@pending</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section class="panel">
         <div class="panel-header">
           <div>
@@ -488,10 +343,7 @@
             <p class="eyebrow">Calendar</p>
             <h2>Select potential dates or times for your event</h2>
           </div>
-          <div class="view-switcher">
-            <button type="button" class="active">Month view</button>
-            <button type="button" disabled>Week view</button>
-          </div>
+          <div class="view-switcher" aria-live="polite">Month view</div>
         </div>
         <div class="calendar-body">
           <div class="calendar-card">
@@ -532,42 +384,15 @@
     </main>
 
     <script>
-      (function initTelegramAuth() {
+      (function initTelegramBridge() {
         const tg = window.Telegram?.WebApp;
-        const status = document.getElementById("connectionStatus");
-        const nameEl = document.getElementById("userName");
-        const usernameEl = document.getElementById("userUsername");
-        const avatarEl = document.getElementById("userAvatar");
-
-        const setStatus = (text, state = "neutral") => {
-          status.textContent = text;
-          status.dataset.state = state;
-        };
-
-        const applyUser = (user) => {
-          if (!user) {
-            return;
-          }
-          const fullName =
-            [user.first_name, user.last_name].filter(Boolean).join(" ") || "Telegram User";
-          const username = user.username ? `@${user.username}` : `id:${user.id}`;
-          nameEl.textContent = fullName;
-          usernameEl.textContent = username;
-          avatarEl.textContent =
-            (fullName.match(/\b\w/g) || ["T"]).slice(0, 2).join("").toUpperCase();
-        };
-
         if (tg) {
           tg.ready();
           tg.expand?.();
           tg.setHeaderColor?.("secondary_bg_color");
-          setStatus("Connected via Telegram", "connected");
-          applyUser(tg.initDataUnsafe?.user);
-          if (!tg.initDataUnsafe?.user) {
-            setStatus("Waiting for Telegram user…", "warning");
-          }
+          window.currentTelegramUser = tg.initDataUnsafe?.user ?? null;
         } else {
-          setStatus("Running outside Telegram", "warning");
+          window.currentTelegramUser = null;
         }
       })();
 
