@@ -114,18 +114,6 @@
         min-height: 120px;
       }
 
-      .view-switcher {
-        display: inline-flex;
-        align-items: center;
-        padding: 10px 16px;
-        border: 1px solid var(--panel-border);
-        border-radius: 12px;
-        background: #f8f9fb;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-secondary);
-      }
-
       .calendar-body {
         display: grid;
         grid-template-columns: minmax(320px, 1fr) minmax(260px, 0.8fr);
@@ -219,30 +207,40 @@
       }
 
       .selection-card {
-        border: 1px dashed var(--panel-border);
+        border: 1px solid var(--panel-border);
         border-radius: 16px;
         padding: 24px;
         display: flex;
         flex-direction: column;
         min-height: 320px;
-        background: #fdfdfd;
+        background: #fff;
       }
 
       .selection-header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        margin-bottom: 16px;
+        gap: 16px;
+        margin-bottom: 20px;
       }
 
       .selection-header h3 {
-        margin: 0;
-        font-size: 16px;
+        margin: 4px 0 6px;
+        font-size: 18px;
       }
 
       .selection-count {
+        display: inline-block;
+        margin-top: 4px;
         font-size: 13px;
         color: var(--text-secondary);
+      }
+
+      .selection-body {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        flex: 1;
       }
 
       .selection-placeholder {
@@ -261,31 +259,154 @@
         stroke-width: 2;
       }
 
-      .selection-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
+      .toggle {
+        position: relative;
+        width: 52px;
+        height: 28px;
+      }
+
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-track {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #d0d5dd;
+        border-radius: 999px;
+        transition: background 0.2s ease;
+      }
+
+      .toggle-track::after {
+        content: "";
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        left: 3px;
+        top: 3px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+        transition: transform 0.2s ease;
+      }
+
+      .toggle input:checked + .toggle-track {
+        background: #12b76a;
+      }
+
+      .toggle input:checked + .toggle-track::after {
+        transform: translateX(24px);
+      }
+
+      .date-option {
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        padding: 18px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+
+      .date-chip {
+        min-width: 64px;
+        border: 1px solid #d0d5dd;
+        border-radius: 16px;
+        padding: 6px 10px;
+        text-align: center;
+        background: #f8f9fb;
+      }
+
+      .date-chip .month {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+      }
+
+      .date-chip .day {
+        display: block;
+        font-size: 24px;
+        font-weight: 600;
+        margin-top: 2px;
+      }
+
+      .time-config {
+        flex: 1;
         display: flex;
         flex-direction: column;
         gap: 12px;
       }
 
-      .selection-item {
-        border: 1px solid var(--accent);
-        border-radius: 12px;
-        padding: 12px 14px;
-        background: var(--accent-soft);
-        color: var(--text-primary);
+      .time-row {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .time-select {
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 10px 36px 10px 14px;
+        font-size: 15px;
+        font-weight: 600;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23475467' d='M6 8 0 0h12z'/%3E%3C/svg%3E")
+            no-repeat calc(100% - 12px) 50%,
+          #fff;
+        appearance: none;
+        min-width: 120px;
+      }
+
+      .duration-badge {
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: #f2f4f7;
+        font-size: 13px;
+        color: var(--text-secondary);
         font-weight: 600;
       }
 
-      .selection-item span {
-        font-size: 13px;
+      .icon-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid var(--panel-border);
+        background: #fff;
         color: var(--text-secondary);
-        font-weight: 500;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      .icon-btn:hover {
+        color: #d92d20;
+        border-color: #fda29b;
+      }
+
+      .add-slot-btn {
+        border: 1px dashed var(--panel-border);
+        border-radius: 12px;
+        padding: 10px 14px;
+        background: #fff;
+        font-weight: 600;
+        color: var(--accent);
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .add-slot-btn:disabled {
+        color: var(--text-secondary);
+        cursor: not-allowed;
+        border-style: solid;
+        opacity: 0.6;
+      }
+
+      .time-disabled-hint {
+        font-size: 14px;
+        color: var(--text-secondary);
       }
 
       @media (max-width: 840px) {
@@ -306,6 +427,15 @@
 
         .calendar-card {
           padding: 16px;
+        }
+
+        .date-option {
+          flex-direction: column;
+        }
+
+        .time-row {
+          flex-direction: column;
+          align-items: flex-start;
         }
       }
     </style>
@@ -343,7 +473,6 @@
             <p class="eyebrow">Calendar</p>
             <h2>Select potential dates or times for your event</h2>
           </div>
-          <div class="view-switcher" aria-live="polite">Month view</div>
         </div>
         <div class="calendar-body">
           <div class="calendar-card">
@@ -365,19 +494,27 @@
           </div>
           <div class="selection-card">
             <div class="selection-header">
-              <h3>Selected dates</h3>
-              <span class="selection-count" id="selectionCount">0 dates</span>
+              <div>
+                <p class="eyebrow">Specify times</p>
+                <h3>Include start and end times for each option</h3>
+                <span class="selection-count" id="selectionCount">0 dates</span>
+              </div>
+              <label class="toggle" aria-label="Toggle time slots">
+                <input type="checkbox" id="timeToggle" />
+                <span class="toggle-track"></span>
+              </label>
             </div>
-            <div class="selection-placeholder" id="selectionEmpty">
-              <svg viewBox="0 0 64 64" aria-hidden="true">
-                <rect x="12" y="18" width="40" height="34" rx="8"></rect>
-                <line x1="12" y1="26" x2="52" y2="26"></line>
-                <rect x="22" y="34" width="20" height="12" rx="3"></rect>
-              </svg>
-              <p>No dates selected</p>
-              <p>Choose days on the calendar to add them here.</p>
+            <div class="selection-body" id="selectionBody">
+              <div class="selection-placeholder" id="selectionEmpty">
+                <svg viewBox="0 0 64 64" aria-hidden="true">
+                  <rect x="12" y="18" width="40" height="34" rx="8"></rect>
+                  <line x1="12" y1="26" x2="52" y2="26"></line>
+                  <rect x="22" y="34" width="20" height="12" rx="3"></rect>
+                </svg>
+                <p>No dates selected</p>
+                <p>Choose days on the calendar to add them here.</p>
+              </div>
             </div>
-            <ul class="selection-list" id="selectedDatesList" hidden></ul>
           </div>
         </div>
       </section>
@@ -399,16 +536,71 @@
       (function setupCalendar() {
         const calendarGrid = document.getElementById("calendarGrid");
         const monthLabel = document.getElementById("monthLabel");
-        const selectedList = document.getElementById("selectedDatesList");
+        const selectionBody = document.getElementById("selectionBody");
         const selectionEmpty = document.getElementById("selectionEmpty");
         const selectionCount = document.getElementById("selectionCount");
+        const timeToggle = document.getElementById("timeToggle");
 
-        const selectedDates = new Set();
+        const MINUTES_IN_DAY = 24 * 60;
+        const TIME_STEP = 15;
+        const DEFAULT_SLOT = { start: 12 * 60, end: 13 * 60 };
+        const TIME_POINTS = Array.from(
+          { length: MINUTES_IN_DAY / TIME_STEP + 1 },
+          (_, idx) => idx * TIME_STEP
+        );
+        const DEFAULT_DURATION = DEFAULT_SLOT.end - DEFAULT_SLOT.start;
+
+        const selectedDates = new Map();
         const today = new Date();
         let currentView = new Date(today.getFullYear(), today.getMonth(), 1);
 
         const formatDisplayDate = (date, options) =>
           new Intl.DateTimeFormat("en-US", options).format(date);
+
+        const formatDuration = (minutes) => {
+          if (!minutes) return "0m";
+          const hours = Math.floor(minutes / 60);
+          const mins = minutes % 60;
+          if (hours && mins) return `${hours}h ${mins}m`;
+          if (hours) return `${hours}h`;
+          return `${mins}m`;
+        };
+
+        const formatTime = (minutes) => {
+          const safe = Math.max(0, Math.min(minutes, MINUTES_IN_DAY));
+          if (safe === MINUTES_IN_DAY) {
+            return "24:00";
+          }
+          const hrs = String(Math.floor(safe / 60)).padStart(2, "0");
+          const mins = String(safe % 60).padStart(2, "0");
+          return `${hrs}:${mins}`;
+        };
+
+        const ensureDefaultSlot = (iso) => {
+          const entry = selectedDates.get(iso);
+          if (!entry) return;
+          if (!entry.slots.length) {
+            entry.slots.push({ ...DEFAULT_SLOT });
+          }
+        };
+
+        const appendSlot = (iso) => {
+          const entry = selectedDates.get(iso);
+          if (!entry) return;
+          if (!entry.slots.length) {
+            ensureDefaultSlot(iso);
+            return;
+          }
+
+          const last = entry.slots[entry.slots.length - 1];
+          const duration = Math.max(last.end - last.start, DEFAULT_DURATION);
+          const newStart = last.end;
+          const newEnd = newStart + duration;
+          if (newEnd > MINUTES_IN_DAY) {
+            return;
+          }
+          entry.slots.push({ start: newStart, end: newEnd });
+        };
 
         const rebuildCalendar = () => {
           const year = currentView.getFullYear();
@@ -453,50 +645,152 @@
           }
         };
 
-        const updateSelectionPanel = () => {
+        const buildTimeSelect = (value, type) => {
+          const select = document.createElement("select");
+          select.className = "time-select";
+          TIME_POINTS.forEach((point, idx) => {
+            if (type === "start" && point === MINUTES_IN_DAY) {
+              return;
+            }
+            const option = document.createElement("option");
+            option.value = point;
+            option.textContent = formatTime(point);
+            select.appendChild(option);
+          });
+          select.value =
+            type === "start"
+              ? Math.min(value, MINUTES_IN_DAY - TIME_STEP)
+              : Math.min(value, MINUTES_IN_DAY);
+          return select;
+        };
+
+        const renderSelection = () => {
           const total = selectedDates.size;
           selectionCount.textContent = total
             ? `${total} date${total > 1 ? "s" : ""}`
             : "0 dates";
 
+          selectionBody.innerHTML = "";
+
           if (!total) {
             selectionEmpty.hidden = false;
-            selectedList.hidden = true;
-            selectedList.innerHTML = "";
+            selectionBody.appendChild(selectionEmpty);
             return;
           }
 
           selectionEmpty.hidden = true;
-          selectedList.hidden = false;
-          selectedList.innerHTML = "";
+          const sortedDates = Array.from(selectedDates.keys()).sort();
 
-          Array.from(selectedDates)
-            .sort()
-            .forEach((iso) => {
-              const cellDate = new Date(iso);
-              const primary = formatDisplayDate(cellDate, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
+          sortedDates.forEach((iso) => {
+            const entry = selectedDates.get(iso);
+            const option = document.createElement("div");
+            option.className = "date-option";
+            option.dataset.date = iso;
+
+            const date = new Date(iso);
+            const chip = document.createElement("div");
+            chip.className = "date-chip";
+            chip.innerHTML = `<span class="month">${formatDisplayDate(date, {
+              month: "short",
+            })}</span><span class="day">${date.getDate()}</span>`;
+
+            const timeConfig = document.createElement("div");
+            timeConfig.className = "time-config";
+
+            if (!timeToggle.checked) {
+              const hint = document.createElement("p");
+              hint.className = "time-disabled-hint";
+              hint.textContent = "Times not specified for this date.";
+              timeConfig.appendChild(hint);
+            } else {
+              entry.slots.forEach((slot, index) => {
+                const row = document.createElement("div");
+                row.className = "time-row";
+
+                const startSelect = buildTimeSelect(slot.start, "start");
+                const endSelect = buildTimeSelect(slot.end, "end");
+                const durationBadge = document.createElement("span");
+                durationBadge.className = "duration-badge";
+                durationBadge.textContent = formatDuration(slot.end - slot.start);
+                const removeBtn = document.createElement("button");
+                removeBtn.type = "button";
+                removeBtn.className = "icon-btn";
+                removeBtn.setAttribute("aria-label", "Remove time slot");
+                removeBtn.textContent = "\u00D7";
+
+                startSelect.addEventListener("change", () => {
+                  const newStart = Number(startSelect.value);
+                  const currentDuration = Math.max(slot.end - slot.start, TIME_STEP);
+                  slot.start = newStart;
+                  if (slot.end <= newStart) {
+                    slot.end = Math.min(newStart + currentDuration, MINUTES_IN_DAY);
+                  }
+                  renderSelection();
+                });
+
+                endSelect.addEventListener("change", () => {
+                  let newEnd = Number(endSelect.value);
+                  if (newEnd <= slot.start) {
+                    newEnd = Math.min(slot.start + TIME_STEP, MINUTES_IN_DAY);
+                  }
+                  slot.end = newEnd;
+                  renderSelection();
+                });
+
+                removeBtn.addEventListener("click", () => {
+                  entry.slots.splice(index, 1);
+                  renderSelection();
+                });
+
+                row.appendChild(startSelect);
+                row.appendChild(endSelect);
+                row.appendChild(durationBadge);
+                row.appendChild(removeBtn);
+                timeConfig.appendChild(row);
               });
-              const secondary = formatDisplayDate(cellDate, { year: "numeric" });
 
-              const li = document.createElement("li");
-              li.className = "selection-item";
-              li.innerHTML = `<span>${primary}</span><span>${secondary}</span>`;
-              selectedList.appendChild(li);
-            });
+              const addBtn = document.createElement("button");
+              addBtn.type = "button";
+              addBtn.className = "add-slot-btn";
+              addBtn.textContent = "+ Add time slot";
+              const lastSlot = entry.slots[entry.slots.length - 1];
+              const duration = lastSlot
+                ? Math.max(lastSlot.end - lastSlot.start, DEFAULT_DURATION)
+                : DEFAULT_DURATION;
+              const canAdd = !lastSlot || lastSlot.end + duration <= MINUTES_IN_DAY;
+              addBtn.disabled = !canAdd;
+              addBtn.addEventListener("click", () => {
+                appendSlot(iso);
+                renderSelection();
+              });
+              timeConfig.appendChild(addBtn);
+            }
+
+            option.appendChild(chip);
+            option.appendChild(timeConfig);
+            selectionBody.appendChild(option);
+          });
         };
 
         const toggleDate = (iso) => {
           if (selectedDates.has(iso)) {
             selectedDates.delete(iso);
           } else {
-            selectedDates.add(iso);
+            selectedDates.set(iso, { slots: [] });
+            if (timeToggle.checked) {
+              ensureDefaultSlot(iso);
+            }
           }
           rebuildCalendar();
-          updateSelectionPanel();
+          renderSelection();
         };
+
+        timeToggle.addEventListener("change", () => {
+          if (timeToggle.checked) {
+            selectedDates.forEach((_, iso) => ensureDefaultSlot(iso));
+          }
+          renderSelection();
+        });
 
         document.querySelectorAll("[data-direction]").forEach((btn) => {
           btn.addEventListener("click", () => {
@@ -507,7 +801,7 @@
         });
 
         rebuildCalendar();
-        updateSelectionPanel();
+        renderSelection();
       })();
     </script>
   </body>
