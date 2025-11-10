@@ -11,12 +11,7 @@ import {
   renderTimezoneList,
   setTimezoneSearchValue,
   setCreatePollEnabled,
-  showShareModal,
-  hideShareModal,
-  isShareModalVisible,
 } from "./ui.js";
-
-const BOT_USERNAME = "tmablank_bot";
 
 const TIME_CONFIG = {
   minutesInDay: 24 * 60,
@@ -62,40 +57,12 @@ const TIMEZONE_CATALOG = [
 
 let refs = {};
 let saveTimer = null;
-let lastShareLink = "";
 
 const getStorageId = () => getState().telegramUser?.id ?? "guest";
 
 const schedulePersist = () => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(persistState, 200);
-};
-
-const generatePollId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-
-const encodePayload = (payload) => {
-  const json = JSON.stringify(payload);
-  return encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
-};
-
-const serializeSelectedDates = () =>
-  Array.from(getState().selectedDates.entries()).map(([iso, entry]) => ({
-    iso,
-    slots: entry.slots.map((slot) => ({ start: slot.start, end: slot.end })),
-  }));
-
-const buildInviteLink = () => {
-  const state = getState();
-  const payload = {
-    pollId: generatePollId(),
-    owner: state.telegramUser?.id ?? null,
-    timezone: state.timezone,
-    specifyTimesEnabled: state.specifyTimesEnabled,
-    dates: serializeSelectedDates(),
-    createdAt: Date.now(),
-  };
-  const token = encodePayload(payload);
-  return `https://t.me/${BOT_USERNAME}?startapp=${token}`;
 };
 
 const formatDisplayDate = (date, options) =>
@@ -302,33 +269,23 @@ const handleTimezoneSelect = (zone) => {
 };
 
 const handleCreatePoll = () => {
-  if (!getState().selectedDates.size) return;
-  lastShareLink = buildInviteLink();
-  showShareModal(lastShareLink);
-};
-
-const handleShareOpen = () => {
-  if (!lastShareLink) return;
-  window.open(lastShareLink, "_blank", "noopener,noreferrer");
+  console.info("Create Poll clicked", getState());
 };
 
 const handleDocumentClick = (event) => {
+  if (!isTimezonePopoverVisible()) return;
   if (
-    isTimezonePopoverVisible() &&
-    !refs.timezonePopover.contains(event.target) &&
-    !refs.timezoneButton.contains(event.target)
+    refs.timezonePopover.contains(event.target) ||
+    refs.timezoneButton.contains(event.target)
   ) {
-    setTimezonePopoverVisible(false);
+    return;
   }
+  setTimezonePopoverVisible(false);
 };
 
 const handleDocumentKeydown = (event) => {
-  if (event.key !== "Escape") return;
-  if (isTimezonePopoverVisible()) {
+  if (event.key === "Escape" && isTimezonePopoverVisible()) {
     setTimezonePopoverVisible(false);
-  }
-  if (isShareModalVisible()) {
-    hideShareModal();
   }
 };
 
@@ -343,13 +300,6 @@ const attachEventHandlers = () => {
     handleTimezoneSearch(event.target.value)
   );
   refs.createPollButton.addEventListener("click", handleCreatePoll);
-  refs.shareClose?.addEventListener("click", hideShareModal);
-  refs.shareOverlay?.addEventListener("click", (event) => {
-    if (event.target === refs.shareOverlay) {
-      hideShareModal();
-    }
-  });
-  refs.shareOpenButton?.addEventListener("click", handleShareOpen);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };

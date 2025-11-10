@@ -37,10 +37,6 @@ export const initUI = () => {
   refs.timezoneEmpty = document.getElementById("timezoneEmpty");
   refs.timezoneClose = document.getElementById("timezoneClose");
   refs.createPollButton = document.getElementById("createPollButton");
-  refs.shareOverlay = document.getElementById("shareOverlay");
-  refs.shareClose = document.getElementById("shareClose");
-  refs.shareLinkInput = document.getElementById("shareLinkInput");
-  refs.shareOpenButton = document.getElementById("shareOpenButton");
   return refs;
 };
 
@@ -231,22 +227,3 @@ export const setCreatePollEnabled = (enabled) => {
   refs.createPollButton.disabled = !enabled;
   refs.createPollButton.classList.toggle("active", enabled);
 };
-
-export const showShareModal = (link) => {
-  if (!refs.shareOverlay) return;
-  refs.shareOverlay.hidden = false;
-  if (refs.shareLinkInput) {
-    refs.shareLinkInput.value = link;
-    requestAnimationFrame(() => {
-      refs.shareLinkInput.focus();
-      refs.shareLinkInput.select();
-    });
-  }
-};
-
-export const hideShareModal = () => {
-  if (!refs.shareOverlay) return;
-  refs.shareOverlay.hidden = true;
-};
-
-export const isShareModalVisible = () => Boolean(refs.shareOverlay && !refs.shareOverlay.hidden);
