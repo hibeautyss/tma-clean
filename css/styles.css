@@ -552,3 +552,30 @@
           align-items: flex-start;
         }
       }
+
+      .cta-bar {
+        padding: 0 16px 48px;
+      }
+
+      .primary-btn {
+        width: 100%;
+        border: none;
+        border-radius: 14px;
+        padding: 16px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        color: #fff;
+        background: #475467;
+        transition: background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      }
+
+      .primary-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .primary-btn.active {
+        background: #4338ca;
+        box-shadow: 0 10px 28px rgba(67, 56, 202, 0.4);
+      }

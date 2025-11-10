@@ -10,6 +10,7 @@ import {
   isTimezonePopoverVisible,
   renderTimezoneList,
   setTimezoneSearchValue,
+  setCreatePollEnabled,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -148,6 +149,7 @@ const renderAll = () => {
   setTimezoneLabel(state.timezone);
   const matches = filterTimezones(state.timezoneSearch || "");
   renderTimezoneList(matches, handleTimezoneSelect);
+  setCreatePollEnabled(state.selectedDates.size > 0);
 };
 
 const handleDateToggle = (iso) => {
@@ -250,6 +252,10 @@ const handleTimezoneSelect = (zone) => {
   setTimezoneLabel(zone);
 };
 
+const handleCreatePoll = () => {
+  console.info("Create Poll clicked", getState());
+};
+
 const handleDocumentClick = (event) => {
   if (!isTimezonePopoverVisible()) return;
   if (
@@ -277,6 +283,7 @@ const attachEventHandlers = () => {
   refs.timezoneSearch.addEventListener("input", (event) =>
     handleTimezoneSearch(event.target.value)
   );
+  refs.createPollButton.addEventListener("click", handleCreatePoll);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };

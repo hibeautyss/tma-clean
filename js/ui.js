@@ -36,6 +36,7 @@ export const initUI = () => {
   refs.timezoneList = document.getElementById("timezoneList");
   refs.timezoneEmpty = document.getElementById("timezoneEmpty");
   refs.timezoneClose = document.getElementById("timezoneClose");
+  refs.createPollButton = document.getElementById("createPollButton");
   return refs;
 };
 
@@ -219,4 +220,10 @@ export const setTimezoneSearchValue = (value) => {
   if (refs.timezoneSearch) {
     refs.timezoneSearch.value = value;
   }
+};
+
+export const setCreatePollEnabled = (enabled) => {
+  if (!refs.createPollButton) return;
+  refs.createPollButton.disabled = !enabled;
+  refs.createPollButton.classList.toggle("active", enabled);
 };
