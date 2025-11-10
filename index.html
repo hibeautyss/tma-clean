@@ -1,31 +1,689 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Telegram Mini App</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    :root{color-scheme:light dark}
-    body{margin:0;font:16px/1.5 system-ui,Arial;background:var(--tg-theme-bg-color,#0f1115);color:var(--tg-theme-text-color,#eaeef2)}
-    main{max-width:640px;margin:24px auto;padding:16px}
-    button{padding:10px 14px;border:0;border-radius:10px;cursor:pointer}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Hope this shit works 111oomg</h1>
-    <p>This page runs inside beautiful Telegram.</p>
-    <button id="close">Close</button>
-  </main>
-  <script>
-    try {
-      const tg = window.Telegram?.WebApp;
-      tg?.ready();
-      tg?.expand();
-      tg?.setHeaderColor('secondary_bg_color');
-      document.getElementById('close').onclick = () => tg?.close();
-    } catch(e) {}
-  </script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meeting Planner</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      :root {
+        --bg-color: #f5f6f8;
+        --panel-bg: #ffffff;
+        --panel-border: #e4e7ec;
+        --text-primary: #101828;
+        --text-secondary: #475467;
+        --accent: #155eef;
+        --accent-soft: #e3edff;
+        --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        min-height: 100vh;
+      }
+
+      main {
+        max-width: 960px;
+        margin: 32px auto 48px;
+        padding: 0 16px;
+      }
+
+      .hero {
+        display: flex;
+        gap: 32px;
+        align-items: center;
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: var(--shadow);
+        margin-bottom: 24px;
+      }
+
+      .hero h1 {
+        margin: 8px 0 12px;
+        font-size: 32px;
+        line-height: 1.2;
+      }
+
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin: 0;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--text-secondary);
+      }
+
+      .user-card {
+        margin-left: auto;
+        background: #f8f9fb;
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        padding: 16px;
+        min-width: 220px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #344054;
+        background: #e4e7ec;
+      }
+
+      .status-pill::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #98a2b3;
+      }
+
+      .status-pill[data-state="connected"] {
+        background: #ecfdf3;
+        color: #027a48;
+      }
+
+      .status-pill[data-state="connected"]::before {
+        background: #12b76a;
+      }
+
+      .status-pill[data-state="warning"] {
+        background: #fff4e5;
+        color: #b54708;
+      }
+
+      .status-pill[data-state="warning"]::before {
+        background: #f79009;
+      }
+
+      .user-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-top: 14px;
+      }
+
+      .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #d0e6ff, #eff4ff);
+        color: #155eef;
+        font-weight: 600;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .user-name {
+        margin: 0 0 4px;
+        font-weight: 600;
+      }
+
+      .user-username {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+      }
+
+      .panel {
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        margin-bottom: 24px;
+      }
+
+      .panel-header {
+        padding: 24px 28px;
+        border-bottom: 1px solid var(--panel-border);
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .panel-header h2 {
+        margin: 6px 0 0;
+        font-size: 20px;
+      }
+
+      .panel-body {
+        padding: 28px;
+      }
+
+      .event-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .field label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .hint {
+        font-weight: 400;
+        color: var(--text-secondary);
+      }
+
+      input[type="text"],
+      textarea {
+        width: 100%;
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-size: 16px;
+        font-family: inherit;
+        background: #fff;
+        color: var(--text-primary);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: var(--accent);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(21, 94, 239, 0.15);
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 120px;
+      }
+
+      .view-switcher {
+        display: inline-flex;
+        background: #f8f9fb;
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .view-switcher button {
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 10px 16px;
+        cursor: pointer;
+        color: var(--text-secondary);
+      }
+
+      .view-switcher button.active {
+        background: #fff;
+        color: var(--accent);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+
+      .view-switcher button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .calendar-body {
+        display: grid;
+        grid-template-columns: minmax(320px, 1fr) minmax(260px, 0.8fr);
+        gap: 24px;
+        padding: 24px 28px 32px;
+      }
+
+      .calendar-card {
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        padding: 20px;
+        background: #fff;
+      }
+
+      .calendar-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .nav-btn {
+        border: 1px solid var(--panel-border);
+        background: #fff;
+        border-radius: 12px;
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+        cursor: pointer;
+      }
+
+      .nav-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .month-label {
+        font-weight: 600;
+      }
+
+      .weekdays,
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        margin-top: 16px;
+        gap: 6px;
+      }
+
+      .weekdays span {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .calendar-cell {
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 10px 0;
+        background: #fff;
+        font-weight: 600;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+
+      .calendar-cell:hover:not(.selected):not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .calendar-cell.selected {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+        box-shadow: 0 6px 18px rgba(21, 94, 239, 0.25);
+      }
+
+      .calendar-cell.today {
+        border-color: var(--accent);
+      }
+
+      .calendar-cell:disabled {
+        cursor: default;
+        color: #98a2b3;
+        background: #f5f7fa;
+      }
+
+      .calendar-cell.outside {
+        color: #98a2b3;
+        background: #f8fafc;
+      }
+
+      .selection-card {
+        border: 1px dashed var(--panel-border);
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        min-height: 320px;
+        background: #fdfdfd;
+      }
+
+      .selection-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .selection-header h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .selection-count {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .selection-placeholder {
+        margin: auto;
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 24px;
+      }
+
+      .selection-placeholder svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 12px;
+        fill: none;
+        stroke: #cfd4dc;
+        stroke-width: 2;
+      }
+
+      .selection-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .selection-item {
+        border: 1px solid var(--accent);
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: var(--accent-soft);
+        color: var(--text-primary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+      }
+
+      .selection-item span {
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+
+      @media (max-width: 840px) {
+        .hero {
+          flex-direction: column;
+          text-align: center;
+        }
+
+        .user-card {
+          width: 100%;
+        }
+
+        .calendar-body {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 600px) {
+        main {
+          padding: 0 12px;
+        }
+
+        .panel-body,
+        .panel-header {
+          padding: 20px;
+        }
+
+        .calendar-card {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Meeting planner</p>
+          <h1>Plan a meeting in seconds</h1>
+          <p>We automatically use your Telegram profile so you can start scheduling right away.</p>
+        </div>
+        <div class="user-card">
+          <span class="status-pill" id="connectionStatus">Connecting to Telegram…</span>
+          <div class="user-meta">
+            <div class="avatar" id="userAvatar">--</div>
+            <div>
+              <p class="user-name" id="userName">Guest</p>
+              <p class="user-username" id="userUsername">@pending</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Event</p>
+            <h2>Describe what your event is about</h2>
+          </div>
+        </div>
+        <div class="panel-body">
+          <form class="event-form">
+            <div class="field">
+              <label for="title">Title</label>
+              <input id="title" type="text" placeholder="Monthly Meetup" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="location">Location <span class="hint">(Optional)</span></label>
+              <input id="location" type="text" placeholder="Joe's Coffee Shop" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="description">Description <span class="hint">(Optional)</span></label>
+              <textarea id="description" placeholder="Hey everyone, please choose the dates that work for you!"></textarea>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Calendar</p>
+            <h2>Select potential dates or times for your event</h2>
+          </div>
+          <div class="view-switcher">
+            <button type="button" class="active">Month view</button>
+            <button type="button" disabled>Week view</button>
+          </div>
+        </div>
+        <div class="calendar-body">
+          <div class="calendar-card">
+            <div class="calendar-controls">
+              <button type="button" class="nav-btn" data-direction="prev" aria-label="Previous month">&#8249;</button>
+              <div class="month-label" id="monthLabel">Month YYYY</div>
+              <button type="button" class="nav-btn" data-direction="next" aria-label="Next month">&#8250;</button>
+            </div>
+            <div class="weekdays">
+              <span>Mo</span>
+              <span>Tu</span>
+              <span>We</span>
+              <span>Th</span>
+              <span>Fr</span>
+              <span>Sa</span>
+              <span>Su</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+          <div class="selection-card">
+            <div class="selection-header">
+              <h3>Selected dates</h3>
+              <span class="selection-count" id="selectionCount">0 dates</span>
+            </div>
+            <div class="selection-placeholder" id="selectionEmpty">
+              <svg viewBox="0 0 64 64" aria-hidden="true">
+                <rect x="12" y="18" width="40" height="34" rx="8"></rect>
+                <line x1="12" y1="26" x2="52" y2="26"></line>
+                <rect x="22" y="34" width="20" height="12" rx="3"></rect>
+              </svg>
+              <p>No dates selected</p>
+              <p>Choose days on the calendar to add them here.</p>
+            </div>
+            <ul class="selection-list" id="selectedDatesList" hidden></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function initTelegramAuth() {
+        const tg = window.Telegram?.WebApp;
+        const status = document.getElementById("connectionStatus");
+        const nameEl = document.getElementById("userName");
+        const usernameEl = document.getElementById("userUsername");
+        const avatarEl = document.getElementById("userAvatar");
+
+        const setStatus = (text, state = "neutral") => {
+          status.textContent = text;
+          status.dataset.state = state;
+        };
+
+        const applyUser = (user) => {
+          if (!user) {
+            return;
+          }
+          const fullName =
+            [user.first_name, user.last_name].filter(Boolean).join(" ") || "Telegram User";
+          const username = user.username ? `@${user.username}` : `id:${user.id}`;
+          nameEl.textContent = fullName;
+          usernameEl.textContent = username;
+          avatarEl.textContent =
+            (fullName.match(/\b\w/g) || ["T"]).slice(0, 2).join("").toUpperCase();
+        };
+
+        if (tg) {
+          tg.ready();
+          tg.expand?.();
+          tg.setHeaderColor?.("secondary_bg_color");
+          setStatus("Connected via Telegram", "connected");
+          applyUser(tg.initDataUnsafe?.user);
+          if (!tg.initDataUnsafe?.user) {
+            setStatus("Waiting for Telegram user…", "warning");
+          }
+        } else {
+          setStatus("Running outside Telegram", "warning");
+        }
+      })();
+
+      (function setupCalendar() {
+        const calendarGrid = document.getElementById("calendarGrid");
+        const monthLabel = document.getElementById("monthLabel");
+        const selectedList = document.getElementById("selectedDatesList");
+        const selectionEmpty = document.getElementById("selectionEmpty");
+        const selectionCount = document.getElementById("selectionCount");
+
+        const selectedDates = new Set();
+        const today = new Date();
+        let currentView = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        const formatDisplayDate = (date, options) =>
+          new Intl.DateTimeFormat("en-US", options).format(date);
+
+        const rebuildCalendar = () => {
+          const year = currentView.getFullYear();
+          const month = currentView.getMonth();
+          monthLabel.textContent = new Intl.DateTimeFormat("en-US", {
+            month: "long",
+            year: "numeric",
+          }).format(new Date(year, month, 1));
+
+          const firstOfMonth = new Date(year, month, 1);
+          const startOffset = (firstOfMonth.getDay() + 6) % 7; // convert Sunday=0 to Monday index
+          const startDate = new Date(year, month, 1 - startOffset);
+
+          calendarGrid.innerHTML = "";
+
+          for (let i = 0; i < 42; i++) {
+            const cellDate = new Date(startDate);
+            cellDate.setDate(startDate.getDate() + i);
+            const iso = cellDate.toISOString().split("T")[0];
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "calendar-cell";
+            button.textContent = cellDate.getDate();
+
+            const inMonth = cellDate.getMonth() === month;
+            if (!inMonth) {
+              button.classList.add("outside");
+              button.disabled = true;
+            } else {
+              button.addEventListener("click", () => toggleDate(iso));
+            }
+
+            if (selectedDates.has(iso)) {
+              button.classList.add("selected");
+            }
+
+            if (cellDate.toDateString() === today.toDateString()) {
+              button.classList.add("today");
+            }
+
+            calendarGrid.appendChild(button);
+          }
+        };
+
+        const updateSelectionPanel = () => {
+          const total = selectedDates.size;
+          selectionCount.textContent = total
+            ? `${total} date${total > 1 ? "s" : ""}`
+            : "0 dates";
+
+          if (!total) {
+            selectionEmpty.hidden = false;
+            selectedList.hidden = true;
+            selectedList.innerHTML = "";
+            return;
+          }
+
+          selectionEmpty.hidden = true;
+          selectedList.hidden = false;
+          selectedList.innerHTML = "";
+
+          Array.from(selectedDates)
+            .sort()
+            .forEach((iso) => {
+              const cellDate = new Date(iso);
+              const primary = formatDisplayDate(cellDate, {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              });
+              const secondary = formatDisplayDate(cellDate, { year: "numeric" });
+
+              const li = document.createElement("li");
+              li.className = "selection-item";
+              li.innerHTML = `<span>${primary}</span><span>${secondary}</span>`;
+              selectedList.appendChild(li);
+            });
+        };
+
+        const toggleDate = (iso) => {
+          if (selectedDates.has(iso)) {
+            selectedDates.delete(iso);
+          } else {
+            selectedDates.add(iso);
+          }
+          rebuildCalendar();
+          updateSelectionPanel();
+        };
+
+        document.querySelectorAll("[data-direction]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const direction = btn.dataset.direction === "next" ? 1 : -1;
+            currentView.setMonth(currentView.getMonth() + direction);
+            rebuildCalendar();
+          });
+        });
+
+        rebuildCalendar();
+        updateSelectionPanel();
+      })();
+    </script>
+  </body>
 </html>
