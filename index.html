@@ -222,6 +222,15 @@
         justify-content: space-between;
         gap: 16px;
         margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+
+      .selection-copy {
+        flex: 1 1 220px;
+      }
+
+      .selection-header .toggle {
+        flex-shrink: 0;
       }
 
       .selection-header h3 {
@@ -263,6 +272,7 @@
         position: relative;
         width: 52px;
         height: 28px;
+        display: inline-block;
       }
 
       .toggle input {
@@ -492,9 +502,9 @@
             </div>
             <div class="calendar-grid" id="calendarGrid"></div>
           </div>
-          <div class="selection-card">
-            <div class="selection-header">
-              <div>
+            <div class="selection-card">
+              <div class="selection-header">
+                <div class="selection-copy">
                 <p class="eyebrow">Specify times</p>
                 <h3>Include start and end times for each option</h3>
                 <span class="selection-count" id="selectionCount">0 dates</span>
@@ -549,6 +559,18 @@
           (_, idx) => idx * TIME_STEP
         );
         const DEFAULT_DURATION = DEFAULT_SLOT.end - DEFAULT_SLOT.start;
+
+        const toLocalISO = (date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        };
+
+        const fromISODate = (iso) => {
+          const [year, month, day] = iso.split("-").map(Number);
+          return new Date(year, month - 1, day);
+        };
 
         const selectedDates = new Map();
         const today = new Date();
@@ -619,7 +641,7 @@
           for (let i = 0; i < 42; i++) {
             const cellDate = new Date(startDate);
             cellDate.setDate(startDate.getDate() + i);
-            const iso = cellDate.toISOString().split("T")[0];
+            const iso = toLocalISO(cellDate);
             const button = document.createElement("button");
             button.type = "button";
             button.className = "calendar-cell";
@@ -687,7 +709,7 @@
             option.className = "date-option";
             option.dataset.date = iso;
 
-            const date = new Date(iso);
+            const date = fromISODate(iso);
             const chip = document.createElement("div");
             chip.className = "date-chip";
             chip.innerHTML = `<span class="month">${formatDisplayDate(date, {
