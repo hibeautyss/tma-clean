@@ -821,16 +821,21 @@ textarea {
 }
 
 .timezone-inline {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 13px;
   color: var(--text-secondary);
+  margin-top: 12px;
 }
 
 .timezone-inline .globe {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
+}
+
+.options-count {
+  display: none;
 }
 
 .poll-grid {
