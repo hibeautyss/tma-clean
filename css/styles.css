@@ -64,6 +64,17 @@ main.mobile-shell {
   gap: 20px;
 }
 
+.panel.compact {
+  gap: 16px;
+  padding: 16px;
+}
+
+.edit-options-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .panel-header {
   display: flex;
   flex-direction: column;
@@ -341,6 +352,16 @@ textarea {
   border: none;
   padding: 0;
   text-align: left;
+}
+
+.timezone-btn.ghost {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 12px;
+  border-radius: 14px;
+  opacity: 0.85;
+  cursor: not-allowed;
+  color: var(--text-secondary);
+  background: transparent;
 }
 
 .timezone-btn.inline {
@@ -1140,11 +1161,21 @@ textarea {
   width: min(480px, 100%);
 }
 
+.modal-card.tall {
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.modal-header.between {
+  align-items: flex-start;
 }
 
 .modal-header h3 {
@@ -1167,88 +1198,4 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.option-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 8px 0;
-}
-
-.option-toggle-help {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.option-timezone-hint {
-  margin: 0 0 12px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.option-editor-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 320px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.option-editor-empty {
-  margin: 0;
-  padding: 24px 12px;
-  text-align: center;
-  font-size: 14px;
-  color: var(--text-secondary);
-  border: 1px dashed var(--border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.option-editor-row {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
-  background: var(--surface-alt);
-}
-
-.option-editor-row.disabled {
-  opacity: 0.6;
-}
-
-.option-editor-field {
-  flex: 1;
-  min-width: 140px;
-}
-
-.option-editor-times {
-  flex: 2;
-  min-width: 220px;
-  display: flex;
-  gap: 12px;
-}
-
-.option-editor-remove {
-  margin-left: auto;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--text-primary);
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-
-.option-editor-row input {
-  padding: 10px 12px;
 }

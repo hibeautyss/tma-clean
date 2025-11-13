@@ -38,7 +38,6 @@ import {
   setEditDetailsFeedback,
   setEditDetailsSaving,
   toggleEditDetailsModal,
-  renderEditOptionsList,
   setEditOptionsSpecifyToggle,
   setEditOptionsFeedback,
   setEditOptionsSaving,
@@ -78,7 +77,6 @@ const SCREENS = {
 
 let refs = {};
 let saveTimer = null;
-let editOptionKeySeed = 0;
 const CREATE_LABEL_DEFAULT = "Create Poll";
 const CREATE_LABEL_WORKING = "Saving...";
 
@@ -450,54 +448,66 @@ const closeEditDetailsModal = () => {
   setEditDetailsFeedback("");
 };
 
-const getEmptyEditOptionsDraft = () => ({
-  specifyTimesEnabled: false,
-  options: [],
-  baselineOptionIds: [],
-});
-
-const ensureEditOptionsDraft = () => {
-  const draft = getState().editOptionsDraft;
-  if (draft && Array.isArray(draft.options)) {
-    return draft;
-  }
-  const fallback = getEmptyEditOptionsDraft();
-  updateState({ editOptionsDraft: fallback });
-  return fallback;
+const getEmptyEditOptionsDraft = () => {
+  const today = getState().today ?? new Date();
+  return {
+    specifyTimesEnabled: false,
+    selectedDates: new Map(),
+    baselineOptionIds: [],
+    timezone: getState().timezone ?? DEFAULT_TIMEZONE,
+    currentView: new Date(today.getFullYear(), today.getMonth(), 1),
+  };
 };
 
-const generateOptionKey = (source = "local") => {
-  editOptionKeySeed += 1;
-  return `${source}-${Date.now()}-${editOptionKeySeed}`;
+const ensureEditOptionsDraft = () => {
+  let draft = getState().editOptionsDraft;
+  if (!draft || !(draft.selectedDates instanceof Map)) {
+    draft = getEmptyEditOptionsDraft();
+    updateState({ editOptionsDraft: draft });
+  }
+  return draft;
 };
 
 const buildEditOptionsDraftFromPoll = (poll) => {
+  const base = getEmptyEditOptionsDraft();
   if (!poll) {
-    return getEmptyEditOptionsDraft();
+    return base;
   }
-  const specifyTimesEnabled = Boolean(poll.specify_times);
-  const options = (poll.poll_options ?? []).map((option) => ({
-    id: option.id,
-    key: generateOptionKey("poll"),
-    date: option.option_date ?? "",
-    startMinute:
-      option.start_minute ?? (specifyTimesEnabled ? TIME_CONFIG.defaultSlot.start : null),
-    endMinute:
-      option.end_minute ?? (specifyTimesEnabled ? TIME_CONFIG.defaultSlot.end : null),
-  }));
-  if (!options.length) {
-    options.push({
-      key: generateOptionKey("poll"),
-      date: toLocalISO(getState().today ?? new Date()),
-      startMinute: TIME_CONFIG.defaultSlot.start,
-      endMinute: TIME_CONFIG.defaultSlot.end,
+  base.specifyTimesEnabled = Boolean(poll.specify_times);
+  base.timezone = poll.timezone ?? base.timezone;
+  const selectedDates = new Map();
+  (poll.poll_options ?? []).forEach((option) => {
+    const iso = option.option_date;
+    if (!iso) {
+      return;
+    }
+    if (!selectedDates.has(iso)) {
+      selectedDates.set(iso, { slots: [] });
+    }
+    const entry = selectedDates.get(iso);
+    const start = Number.isFinite(option.start_minute)
+      ? option.start_minute
+      : TIME_CONFIG.defaultSlot.start;
+    const end = Number.isFinite(option.end_minute)
+      ? option.end_minute
+      : Math.min(start + DEFAULT_DURATION, TIME_CONFIG.minutesInDay);
+    entry.slots.push({
+      id: option.id ?? null,
+      start,
+      end,
     });
+  });
+  if (base.specifyTimesEnabled) {
+    selectedDates.forEach((_, iso) => ensureDefaultSlotForCollection(selectedDates, iso));
   }
-  return {
-    specifyTimesEnabled,
-    options,
-    baselineOptionIds: options.map((entry) => entry.id).filter(Boolean),
-  };
+  base.selectedDates = selectedDates;
+  base.baselineOptionIds = (poll.poll_options ?? []).map((option) => option.id).filter(Boolean);
+  const firstIso = selectedDates.keys().next().value;
+  if (firstIso) {
+    const seed = new Date(firstIso);
+    base.currentView = new Date(seed.getFullYear(), seed.getMonth(), 1);
+  }
+  return base;
 };
 
 const setEditOptionsModalState = (open) => {
@@ -508,15 +518,6 @@ const setEditOptionsModalState = (open) => {
 const isEditOptionsModalOpen = () =>
   Boolean(refs.editOptionsModal && !refs.editOptionsModal.hidden);
 
-const updateOptionControlValue = (key, role, value) => {
-  const control = refs.editOptionsList?.querySelector(
-    `[data-option-key="${key}"] select[data-role="${role}"]`
-  );
-  if (control) {
-    control.value = `${value}`;
-  }
-};
-
 const clampEditorMinute = (value, max = TIME_CONFIG.minutesInDay) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return 0;
@@ -524,59 +525,42 @@ const clampEditorMinute = (value, max = TIME_CONFIG.minutesInDay) => {
   return Math.max(0, Math.min(value, max));
 };
 
-const ensureOptionTimes = (option) => {
-  const safeStart = Number.isFinite(option.startMinute)
-    ? clampEditorMinute(option.startMinute, TIME_CONFIG.minutesInDay - TIME_CONFIG.timeStep)
-    : TIME_CONFIG.defaultSlot.start;
-  let safeEnd = Number.isFinite(option.endMinute)
-    ? clampEditorMinute(option.endMinute)
-    : TIME_CONFIG.defaultSlot.end;
-  if (safeEnd <= safeStart) {
-    safeEnd = Math.min(safeStart + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
-  }
-  option.startMinute = safeStart;
-  option.endMinute = safeEnd;
-};
-
-const getDefaultOptionDate = () => {
-  const draft = getState().editOptionsDraft;
-  if (draft?.options?.length) {
-    return draft.options[draft.options.length - 1].date ?? toLocalISO(new Date());
-  }
-  const poll = getState().activePoll;
-  if (poll?.poll_options?.length) {
-    return poll.poll_options[poll.poll_options.length - 1].option_date ?? toLocalISO(new Date());
-  }
-  return toLocalISO(getState().today ?? new Date());
-};
-
 const buildEditOptionsPayload = (draft) => {
   const specifyTimesEnabled = Boolean(draft?.specifyTimesEnabled);
-  const options = Array.isArray(draft?.options) ? draft.options : [];
-  if (!options.length) {
-    throw new Error("Add at least one option before saving.");
+  const selectedDates = draft?.selectedDates;
+  if (!(selectedDates instanceof Map) || !selectedDates.size) {
+    throw new Error("Select at least one date before saving.");
   }
-  const normalized = options.map((option) => {
-    if (!option?.date) {
-      const error = new Error("Each option must include a date.");
-      error.focusSelector = `[data-option-key="${option?.key}"] input[type="date"]`;
-      throw error;
+  const normalized = [];
+  selectedDates.forEach((entry, iso) => {
+    if (!iso) return;
+    const slots = Array.isArray(entry?.slots) ? entry.slots : [];
+    if (!specifyTimesEnabled) {
+      const slot = slots[0];
+      normalized.push({
+        id: slot?.id ?? null,
+        option_date: iso,
+        start_minute: null,
+        end_minute: null,
+      });
+      return;
     }
-    if (specifyTimesEnabled) {
-      ensureOptionTimes(option);
-      if (!(option.endMinute > option.startMinute)) {
-        const error = new Error("Time ranges must end after they start.");
-        error.focusSelector = `[data-option-key="${option?.key}"] select[data-role="end"]`;
-        throw error;
+    if (!slots.length) {
+      throw new Error("Add at least one time slot for every selected date.");
+    }
+    slots.forEach((slot) => {
+      const start = clampEditorMinute(slot.start, TIME_CONFIG.minutesInDay - TIME_CONFIG.timeStep);
+      let end = clampEditorMinute(slot.end);
+      if (end <= start) {
+        end = Math.min(start + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
       }
-    }
-    return {
-      id: option.id ?? null,
-      key: option.key,
-      option_date: option.date,
-      start_minute: specifyTimesEnabled ? option.startMinute : null,
-      end_minute: specifyTimesEnabled ? option.endMinute : null,
-    };
+      normalized.push({
+        id: slot.id ?? null,
+        option_date: iso,
+        start_minute: start,
+        end_minute: end,
+      });
+    });
   });
   return { specifyTimesEnabled, normalized };
 };
@@ -655,24 +639,36 @@ const handleManageEditDetails = () => {
   openEditDetailsModal();
 };
 
-const renderEditOptionsDraft = () => {
+const renderEditOptionsUI = () => {
   const draft = ensureEditOptionsDraft();
-  renderEditOptionsList(
-    draft,
+  const selectedDates = draft.selectedDates ?? new Map();
+  const calendarView = buildCalendarView({
+    currentView: draft.currentView ?? getState().currentView,
+    today: getState().today,
+    selectedDates,
+  });
+  renderCalendar(
+    calendarView,
+    { onDateToggle: handleEditDateToggle },
+    { grid: refs.editOptionsCalendarGrid, monthLabel: refs.editOptionsMonthLabel }
+  );
+  renderSelection(
+    { selectedDates, specifyTimesEnabled: draft.specifyTimesEnabled },
     {
-      onDateChange: (key, value) => handleEditOptionDateChange(key, value),
-      onStartChange: (key, value) => handleEditOptionStartChange(key, value),
-      onEndChange: (key, value) => handleEditOptionEndChange(key, value),
-      onRemove: (key) => handleEditOptionRemove(key),
+      onAddSlot: handleEditAddSlot,
+      onRemoveSlot: handleEditRemoveSlot,
+      onSlotChange: handleEditSlotChange,
+      canAddSlot: (iso) => canAddSlotForCollection(selectedDates, iso),
     },
-    TIME_CONFIG
+    TIME_CONFIG,
+    {
+      body: refs.editOptionsSelectionBody,
+      empty: refs.editOptionsSelectionEmpty,
+      count: refs.editOptionsSelectionCount,
+    }
   );
   setEditOptionsSpecifyToggle(draft.specifyTimesEnabled);
-};
-
-const focusFirstEditOptionField = () => {
-  const target = refs.editOptionsList?.querySelector('input[type="date"]');
-  target?.focus();
+  setEditOptionsTimezoneLabel(formatTimezoneDisplay(draft.timezone ?? DEFAULT_TIMEZONE));
 };
 
 const openEditOptionsModal = () => {
@@ -685,10 +681,8 @@ const openEditOptionsModal = () => {
   });
   setEditOptionsFeedback("");
   setEditOptionsSaving(false);
-  setEditOptionsTimezoneLabel(formatTimezoneDisplay(poll.timezone));
-  renderEditOptionsDraft();
+  renderEditOptionsUI();
   setEditOptionsModalState(true);
-  setTimeout(focusFirstEditOptionField, 0);
 };
 
 const closeEditOptionsModal = () => {
@@ -701,73 +695,67 @@ const closeEditOptionsModal = () => {
   });
 };
 
-const handleAddEditOption = (event) => {
-  event?.preventDefault?.();
-  const draft = ensureEditOptionsDraft();
-  draft.options.push({
-    id: null,
-    key: generateOptionKey("local"),
-    date: getDefaultOptionDate(),
-    startMinute: TIME_CONFIG.defaultSlot.start,
-    endMinute: TIME_CONFIG.defaultSlot.end,
-  });
-  renderEditOptionsDraft();
-};
-
-const handleEditOptionDateChange = (key, value) => {
-  const draft = ensureEditOptionsDraft();
-  const option = draft.options.find((entry) => entry.key === key);
-  if (!option) return;
-  option.date = value;
-};
-
-const handleEditOptionStartChange = (key, value) => {
-  const draft = ensureEditOptionsDraft();
-  const option = draft.options.find((entry) => entry.key === key);
-  if (!option) return;
-  const sanitized = clampEditorMinute(value, TIME_CONFIG.minutesInDay - TIME_CONFIG.timeStep);
-  option.startMinute = sanitized;
-  if (!Number.isFinite(option.endMinute) || option.endMinute <= sanitized) {
-    option.endMinute = Math.min(sanitized + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
-    updateOptionControlValue(key, "end", option.endMinute);
-  }
-};
-
-const handleEditOptionEndChange = (key, value) => {
-  const draft = ensureEditOptionsDraft();
-  const option = draft.options.find((entry) => entry.key === key);
-  if (!option) return;
-  const start = Number.isFinite(option.startMinute) ? option.startMinute : TIME_CONFIG.defaultSlot.start;
-  const sanitized = clampEditorMinute(value);
-  if (sanitized <= start) {
-    option.endMinute = Math.min(start + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
-    updateOptionControlValue(key, "end", option.endMinute);
-    return;
-  }
-  option.endMinute = sanitized;
-};
-
-const handleEditOptionRemove = (key) => {
-  const draft = ensureEditOptionsDraft();
-  const index = draft.options.findIndex((entry) => entry.key === key);
-  if (index === -1) return;
-  draft.options.splice(index, 1);
-  renderEditOptionsDraft();
-};
-
 const handleEditOptionsSpecifyToggle = (checked) => {
+  if (getState().isUpdatingOptions) return;
   const draft = ensureEditOptionsDraft();
   draft.specifyTimesEnabled = Boolean(checked);
   if (checked) {
-    draft.options.forEach(ensureOptionTimes);
+    draft.selectedDates.forEach((_, iso) => ensureDefaultSlotForCollection(draft.selectedDates, iso));
   }
-  renderEditOptionsDraft();
+  renderEditOptionsUI();
 };
 
 const handleManageEditOptions = () => {
   if (!getState().canManageActivePoll) return;
   closeManageMenu();
   openEditOptionsModal();
+};
+
+const handleEditDateToggle = (iso) => {
+  if (getState().isUpdatingOptions) return;
+  const draft = ensureEditOptionsDraft();
+  const selectedDates = draft.selectedDates;
+  if (selectedDates.has(iso)) {
+    selectedDates.delete(iso);
+  } else {
+    selectedDates.set(iso, { slots: [] });
+    if (draft.specifyTimesEnabled) {
+      ensureDefaultSlotForCollection(selectedDates, iso);
+    }
+  }
+  renderEditOptionsUI();
+};
+
+const handleEditAddSlot = (iso) => {
+  if (getState().isUpdatingOptions) return;
+  const draft = ensureEditOptionsDraft();
+  appendSlotToCollection(draft.selectedDates, iso);
+  renderEditOptionsUI();
+};
+
+const handleEditRemoveSlot = (iso, index) => {
+  if (getState().isUpdatingOptions) return;
+  const draft = ensureEditOptionsDraft();
+  removeSlotFromCollection(draft.selectedDates, iso, index);
+  renderEditOptionsUI();
+};
+
+const handleEditSlotChange = (iso, index, type, value) => {
+  if (getState().isUpdatingOptions) return;
+  const draft = ensureEditOptionsDraft();
+  updateSlotInCollection(draft.selectedDates, iso, index, type, value);
+  renderEditOptionsUI();
+};
+
+const handleEditMonthNav = (event) => {
+  event?.preventDefault?.();
+  if (getState().isUpdatingOptions) return;
+  const direction = event.currentTarget.dataset.editDirection;
+  const draft = ensureEditOptionsDraft();
+  const current = draft.currentView ? new Date(draft.currentView) : new Date(getState().today ?? new Date());
+  current.setMonth(current.getMonth() + (direction === "next" ? 1 : -1));
+  draft.currentView = current;
+  renderEditOptionsUI();
 };
 
 const handleCancelEditOptions = (event) => {
@@ -787,9 +775,6 @@ const handleEditOptionsSubmit = async (event) => {
     payload = buildEditOptionsPayload(draft);
   } catch (error) {
     setEditOptionsFeedback(error.message ?? "Please review your options.", "error");
-    if (error.focusSelector) {
-      refs.editOptionsList?.querySelector(error.focusSelector)?.focus();
-    }
     return;
   }
   const removedOptionIds = deriveRemovedOptionIds(draft, payload.normalized);
@@ -863,9 +848,11 @@ const toLocalISO = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-const buildCalendarView = () => {
+const buildCalendarView = (overrides = {}) => {
   const state = getState();
-  const { currentView, today, selectedDates } = state;
+  const currentView = overrides.currentView ?? state.currentView;
+  const today = overrides.today ?? state.today;
+  const selectedDates = overrides.selectedDates ?? state.selectedDates;
   const year = currentView.getFullYear();
   const month = currentView.getMonth();
   const firstOfMonth = new Date(year, month, 1);
@@ -892,42 +879,90 @@ const buildCalendarView = () => {
   };
 };
 
-const ensureDefaultSlot = (iso) => {
-  const entry = getState().selectedDates.get(iso);
+const getSelectionEntry = (collection, iso) => {
+  if (!(collection instanceof Map)) return null;
+  const entry = collection.get(iso);
+  if (!entry) return null;
+  if (!Array.isArray(entry.slots)) {
+    entry.slots = [];
+  }
+  return entry;
+};
+
+const ensureDefaultSlotForCollection = (collection, iso) => {
+  const entry = getSelectionEntry(collection, iso);
   if (!entry) return;
   if (!entry.slots.length) {
-    entry.slots.push({ ...TIME_CONFIG.defaultSlot });
+    entry.slots.push({ ...TIME_CONFIG.defaultSlot, id: null });
   }
 };
 
-const appendSlot = (iso) => {
-  const entry = getState().selectedDates.get(iso);
+const appendSlotToCollection = (collection, iso) => {
+  const entry = getSelectionEntry(collection, iso);
   if (!entry) {
     return;
   }
   if (!entry.slots.length) {
-    ensureDefaultSlot(iso);
+    ensureDefaultSlotForCollection(collection, iso);
     return;
   }
   const last = entry.slots[entry.slots.length - 1];
-  const duration = Math.max(last.end - last.start, DEFAULT_DURATION);
-  const newStart = last.end;
+  const safeStart = Number.isFinite(last.end) ? last.end : last.start ?? 0;
+  const duration = Math.max((last.end ?? last.start ?? 0) - (last.start ?? 0), DEFAULT_DURATION);
+  const newStart = safeStart;
   const newEnd = newStart + duration;
   if (newEnd > TIME_CONFIG.minutesInDay) {
     return;
   }
-  entry.slots.push({ start: newStart, end: newEnd });
+  entry.slots.push({ start: newStart, end: newEnd, id: null });
 };
 
-const canAddSlotForDate = (iso) => {
-  const entry = getState().selectedDates.get(iso);
+const canAddSlotForCollection = (collection, iso) => {
+  const entry = getSelectionEntry(collection, iso);
   if (!entry || !entry.slots.length) {
     return true;
   }
   const last = entry.slots[entry.slots.length - 1];
-  const duration = Math.max(last.end - last.start, DEFAULT_DURATION);
-  return last.end + duration <= TIME_CONFIG.minutesInDay;
+  const duration = Math.max((last.end ?? last.start ?? 0) - (last.start ?? 0), DEFAULT_DURATION);
+  return (last.end ?? last.start ?? 0) + duration <= TIME_CONFIG.minutesInDay;
 };
+
+const removeSlotFromCollection = (collection, iso, index) => {
+  const entry = getSelectionEntry(collection, iso);
+  if (!entry) return;
+  entry.slots.splice(index, 1);
+};
+
+const updateSlotInCollection = (collection, iso, index, type, value) => {
+  const entry = getSelectionEntry(collection, iso);
+  if (!entry) return false;
+  const slot = entry.slots[index];
+  if (!slot) return false;
+  const safeValue =
+    type === "start"
+      ? clampEditorMinute(value, TIME_CONFIG.minutesInDay - TIME_CONFIG.timeStep)
+      : clampEditorMinute(value);
+  if (type === "start") {
+    const currentDuration = Math.max((slot.end ?? slot.start ?? 0) - (slot.start ?? 0), TIME_CONFIG.timeStep);
+    slot.start = safeValue;
+    if (!Number.isFinite(slot.end) || slot.end <= slot.start) {
+      slot.end = Math.min(slot.start + currentDuration, TIME_CONFIG.minutesInDay);
+    }
+  } else {
+    if (safeValue <= slot.start) {
+      slot.end = Math.min(slot.start + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
+    } else {
+      slot.end = safeValue;
+    }
+  }
+  return true;
+};
+
+const ensureDefaultSlot = (iso) => ensureDefaultSlotForCollection(getState().selectedDates, iso);
+
+const appendSlot = (iso) => appendSlotToCollection(getState().selectedDates, iso);
+
+const canAddSlotForDate = (iso) => canAddSlotForCollection(getState().selectedDates, iso);
 
 const renderAll = () => {
   const state = getState();
@@ -988,32 +1023,13 @@ const handleAddSlot = (iso) => {
 };
 
 const handleRemoveSlot = (iso, index) => {
-  const entry = getState().selectedDates.get(iso);
-  if (!entry) return;
-  entry.slots.splice(index, 1);
+  removeSlotFromCollection(getState().selectedDates, iso, index);
   renderAll();
   schedulePersist();
 };
 
 const handleSlotChange = (iso, index, type, value) => {
-  const entry = getState().selectedDates.get(iso);
-  if (!entry) return;
-  const slot = entry.slots[index];
-  if (!slot) return;
-
-  if (type === "start") {
-    const duration = Math.max(slot.end - slot.start, TIME_CONFIG.timeStep);
-    slot.start = value;
-    if (slot.end <= slot.start) {
-      slot.end = Math.min(slot.start + duration, TIME_CONFIG.minutesInDay);
-    }
-  } else {
-    if (value <= slot.start) {
-      slot.end = Math.min(slot.start + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
-    } else {
-      slot.end = value;
-    }
-  }
+  updateSlotInCollection(getState().selectedDates, iso, index, type, value);
   renderAll();
   schedulePersist();
 };
@@ -1408,9 +1424,11 @@ const attachEventHandlers = () => {
   refs.editOptionsForm?.addEventListener("submit", handleEditOptionsSubmit);
   refs.cancelEditOptionsButton?.addEventListener("click", handleCancelEditOptions);
   refs.closeEditOptionsModal?.addEventListener("click", handleCancelEditOptions);
-  refs.addEditOptionButton?.addEventListener("click", handleAddEditOption);
-  refs.editOptionsSpecifyToggle?.addEventListener("change", (event) =>
+  refs.editOptionsTimeToggle?.addEventListener("change", (event) =>
     handleEditOptionsSpecifyToggle(event.target.checked)
+  );
+  refs.editOptionsNavButtons?.forEach((btn) =>
+    btn.addEventListener("click", handleEditMonthNav)
   );
   wirePressAnimation(refs.createPollButton);
   wirePressAnimation(refs.joinPollButton);

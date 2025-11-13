@@ -31,8 +31,10 @@ const state = {
   isUpdatingOptions: false,
   editOptionsDraft: {
     specifyTimesEnabled: false,
-    options: [],
+    selectedDates: new Map(),
     baselineOptionIds: [],
+    timezone: "Europe/Moscow",
+    currentView: new Date(initialToday.getFullYear(), initialToday.getMonth(), 1),
   },
 };
 

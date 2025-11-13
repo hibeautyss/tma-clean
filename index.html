@@ -334,31 +334,90 @@
     </div>
 
     <div id="editOptionsModal" class="modal-shell" hidden aria-modal="true" role="dialog">
-      <form class="modal-card wide" id="editOptionsForm">
-        <div class="modal-header">
-          <h3>Edit poll options</h3>
+      <form class="modal-card tall" id="editOptionsForm">
+        <div class="modal-header between">
+          <div>
+            <h3>Edit poll options</h3>
+            <p class="modal-subtitle">
+              Pick the dates and optional time slots participants can vote on for this poll.
+            </p>
+          </div>
           <button type="button" class="icon-btn" id="closeEditOptionsModal" aria-label="Close">&times;</button>
         </div>
-        <p class="modal-subtitle">
-          Update the dates or time slots participants can vote on. Changes apply to everyone viewing this poll.
-        </p>
-        <div class="option-toggle-row">
-          <div>
-            <p class="eyebrow">Time slots</p>
-            <p class="option-toggle-help">Include start and end times for each option.</p>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="editOptionsSpecifyToggle" />
-            <span class="toggle-track"></span>
-          </label>
+        <div class="edit-options-body">
+          <section class="panel compact">
+            <div class="calendar-stack">
+              <div class="calendar-card">
+                <div class="calendar-controls">
+                  <button
+                    type="button"
+                    class="nav-btn"
+                    data-edit-direction="prev"
+                    aria-label="Previous month"
+                    id="editOptionsPrevMonth"
+                  >
+                    &#8249;
+                  </button>
+                  <div class="month-label" id="editOptionsMonthLabel">Month YYYY</div>
+                  <button
+                    type="button"
+                    class="nav-btn"
+                    data-edit-direction="next"
+                    aria-label="Next month"
+                    id="editOptionsNextMonth"
+                  >
+                    &#8250;
+                  </button>
+                </div>
+                <div class="weekdays">
+                  <span>Mo</span>
+                  <span>Tu</span>
+                  <span>We</span>
+                  <span>Th</span>
+                  <span>Fr</span>
+                  <span>Sa</span>
+                  <span>Su</span>
+                </div>
+                <div class="calendar-grid" id="editOptionsCalendarGrid"></div>
+              </div>
+              <div class="timezone-bar">
+                <button type="button" class="timezone-btn ghost" id="editOptionsTimezoneButton" disabled>
+                  <svg class="globe" viewBox="0 0 20 20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M10 1.25a8.75 8.75 0 1 0 0 17.5 8.75 8.75 0 0 0 0-17.5Zm6.99 8h-2.67c-.15-2.23-.9-4.27-2.02-5.77a7.28 7.28 0 0 1 4.69 5.77Zm-7.24-6.3v6.3H6.52c.16-2.05.87-4.01 1.94-5.54.42-.6.86-.68 1.29-.76Zm0 7.55v6.3c-.43-.08-.87-.17-1.29-.76a12 12 0 0 1-1.94-5.54Zm1.25 6.3v-6.3h3.53c-.16 2.05-.87 4.02-1.94 5.54-.42.6-.86.68-1.59.76Zm0-7.55V2.95c.73.08 1.17.16 1.59.76 1.07 1.52 1.78 3.5 1.94 5.54Zm-5.05-5.8c-1.12 1.5-1.87 3.54-2.02 5.77H2.26a7.28 7.28 0 0 1 4.69-5.77ZM2.26 10h2.67c.15 2.23.9 4.27 2.02 5.77a7.28 7.28 0 0 1 4.69-5.77Zm9.78 5.77c1.12-1.5 1.87-3.54 2.02-5.77h2.67a7.28 7.28 0 0 1-4.69 5.77Z"
+                    />
+                  </svg>
+                  <span id="editOptionsTimezoneLabel">Loading...</span>
+                </button>
+              </div>
+            </div>
+            <div class="selection-card">
+              <div class="selection-header">
+                <div class="selection-copy">
+                  <p class="eyebrow">Specify times</p>
+                  <h3>Include start and end times for each option</h3>
+                  <span class="selection-count" id="editOptionsSelectionCount">0 dates</span>
+                </div>
+                <label class="toggle" aria-label="Toggle time slots">
+                  <input type="checkbox" id="editOptionsTimeToggle" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="selection-body" id="editOptionsSelectionBody">
+                <div class="selection-placeholder" id="editOptionsSelectionEmpty">
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <rect x="12" y="18" width="40" height="34" rx="8"></rect>
+                    <line x1="12" y1="26" x2="52" y2="26"></line>
+                    <rect x="22" y="34" width="20" height="12" rx="3"></rect>
+                  </svg>
+                  <p>No dates selected</p>
+                  <p>Choose days on the calendar to add them here.</p>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-        <p class="option-timezone-hint">
-          Times are shown in <strong id="editOptionsTimezoneLabel">Loading...</strong>
-        </p>
-        <div class="option-editor-list" id="editOptionsList">
-          <p class="option-editor-empty">No options yet.</p>
-        </div>
-        <button type="button" class="ghost-btn full-width" id="addEditOptionButton">+ Add another date</button>
         <div class="form-feedback" id="editOptionsFeedback" role="status" aria-live="polite"></div>
         <div class="modal-actions">
           <button type="button" class="ghost-btn" id="cancelEditOptionsButton">Cancel</button>

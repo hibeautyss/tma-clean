@@ -106,14 +106,19 @@ export const initUI = () => {
   refs.editDetailsFeedback = document.getElementById("editDetailsFeedback");
   refs.editOptionsModal = document.getElementById("editOptionsModal");
   refs.editOptionsForm = document.getElementById("editOptionsForm");
-  refs.editOptionsList = document.getElementById("editOptionsList");
+  refs.editOptionsMonthLabel = document.getElementById("editOptionsMonthLabel");
+  refs.editOptionsCalendarGrid = document.getElementById("editOptionsCalendarGrid");
+  refs.editOptionsNavButtons = document.querySelectorAll("[data-edit-direction]");
+  refs.editOptionsSelectionBody = document.getElementById("editOptionsSelectionBody");
+  refs.editOptionsSelectionEmpty = document.getElementById("editOptionsSelectionEmpty");
+  refs.editOptionsSelectionCount = document.getElementById("editOptionsSelectionCount");
+  refs.editOptionsTimeToggle = document.getElementById("editOptionsTimeToggle");
+  refs.editOptionsTimezoneLabel = document.getElementById("editOptionsTimezoneLabel");
+  refs.editOptionsTimezoneButton = document.getElementById("editOptionsTimezoneButton");
   refs.editOptionsFeedback = document.getElementById("editOptionsFeedback");
   refs.cancelEditOptionsButton = document.getElementById("cancelEditOptionsButton");
   refs.saveEditOptionsButton = document.getElementById("saveEditOptionsButton");
   refs.closeEditOptionsModal = document.getElementById("closeEditOptionsModal");
-  refs.addEditOptionButton = document.getElementById("addEditOptionButton");
-  refs.editOptionsSpecifyToggle = document.getElementById("editOptionsSpecifyToggle");
-  refs.editOptionsTimezoneLabel = document.getElementById("editOptionsTimezoneLabel");
   return refs;
 };
 
@@ -130,10 +135,12 @@ export const setCreatedOnlyFilter = (checked) => {
   }
 };
 
-export const renderCalendar = (view, handlers = {}) => {
-  if (!refs.calendarGrid || !refs.monthLabel) return;
-  refs.monthLabel.textContent = view.monthLabel;
-  refs.calendarGrid.innerHTML = "";
+export const renderCalendar = (view, handlers = {}, target = {}) => {
+  const grid = target.grid ?? refs.calendarGrid;
+  const monthLabel = target.monthLabel ?? refs.monthLabel;
+  if (!grid || !monthLabel) return;
+  monthLabel.textContent = view.monthLabel;
+  grid.innerHTML = "";
   view.cells.forEach((cell) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -153,29 +160,32 @@ export const renderCalendar = (view, handlers = {}) => {
     if (cell.isToday) {
       button.classList.add("today");
     }
-    refs.calendarGrid.appendChild(button);
+    grid.appendChild(button);
   });
 };
 
-export const renderSelection = (state, handlers = {}, options = {}) => {
+export const renderSelection = (state, handlers = {}, options = {}, target = {}) => {
   const { selectedDates, specifyTimesEnabled } = state;
   const { minutesInDay = 24 * 60, timeStep = 15 } = options;
 
-  if (!refs.selectionBody || !refs.selectionEmpty || !refs.selectionCount) {
+  const body = target.body ?? refs.selectionBody;
+  const empty = target.empty ?? refs.selectionEmpty;
+  const countLabel = target.count ?? refs.selectionCount;
+  if (!body || !empty || !countLabel) {
     return;
   }
 
   const total = selectedDates.size;
-  refs.selectionCount.textContent = total ? `${total} date${total > 1 ? "s" : ""}` : "0 dates";
-  refs.selectionBody.innerHTML = "";
+  countLabel.textContent = total ? `${total} date${total > 1 ? "s" : ""}` : "0 dates";
+  body.innerHTML = "";
 
   if (!total) {
-    refs.selectionEmpty.hidden = false;
-    refs.selectionBody.appendChild(refs.selectionEmpty);
+    empty.hidden = false;
+    body.appendChild(empty);
     return;
   }
 
-  refs.selectionEmpty.hidden = true;
+  empty.hidden = true;
 
   const sortedEntries = Array.from(selectedDates.entries()).sort(([a], [b]) =>
     a.localeCompare(b)
@@ -266,7 +276,7 @@ export const renderSelection = (state, handlers = {}, options = {}) => {
 
     container.appendChild(chip);
     container.appendChild(timeConfig);
-    refs.selectionBody.appendChild(container);
+    body.appendChild(container);
   });
 };
 
@@ -644,126 +654,9 @@ export const setEditOptionsTimezoneLabel = (label) => {
 };
 
 export const setEditOptionsSpecifyToggle = (checked) => {
-  if (refs.editOptionsSpecifyToggle) {
-    refs.editOptionsSpecifyToggle.checked = Boolean(checked);
+  if (refs.editOptionsTimeToggle) {
+    refs.editOptionsTimeToggle.checked = Boolean(checked);
   }
-};
-
-const buildTimePoints = (minutesInDay, timeStep) => {
-  const points = [];
-  for (let mark = 0; mark <= minutesInDay; mark += timeStep) {
-    points.push(mark);
-  }
-  return points;
-};
-
-const getOptionKey = (option, index) => option?.key ?? option?.id ?? `option-${index}`;
-
-const buildSelect = (values = [], selected, disabled, onChange) => {
-  const select = document.createElement("select");
-  select.className = "time-select";
-  values.forEach((point) => {
-    const option = document.createElement("option");
-    option.value = point;
-    option.textContent = formatTime(point);
-    select.appendChild(option);
-  });
-  select.value = `${selected}`;
-  select.disabled = disabled;
-  select.addEventListener("change", () => onChange?.(Number(select.value)));
-  return select;
-};
-
-export const renderEditOptionsList = (editor = {}, handlers = {}, timeConfig = {}) => {
-  if (!refs.editOptionsList) return;
-  const { options = [], specifyTimesEnabled = false } = editor ?? {};
-  refs.editOptionsList.innerHTML = "";
-  if (!options.length) {
-    const empty = document.createElement("p");
-    empty.className = "option-editor-empty";
-    empty.textContent = "No options yet.";
-    refs.editOptionsList.appendChild(empty);
-    return;
-  }
-
-  const minutesInDay = timeConfig.minutesInDay ?? 24 * 60;
-  const timeStep = timeConfig.timeStep ?? 15;
-  const defaultStart = timeConfig.defaultSlot?.start ?? Math.floor((minutesInDay / 2));
-  const defaultEnd = timeConfig.defaultSlot?.end ?? defaultStart + timeStep;
-  const timePoints = buildTimePoints(minutesInDay, timeStep);
-
-  options.forEach((option, index) => {
-    const key = getOptionKey(option, index);
-    const row = document.createElement("div");
-    row.className = "option-editor-row";
-    row.dataset.optionKey = key;
-
-    const dateField = document.createElement("label");
-    dateField.className = "field option-editor-field";
-    const dateLabel = document.createElement("span");
-    dateLabel.textContent = "Date";
-    const dateInput = document.createElement("input");
-    dateInput.type = "date";
-    dateInput.value = option?.date ?? "";
-    dateInput.addEventListener("change", () => handlers.onDateChange?.(key, dateInput.value));
-    dateField.appendChild(dateLabel);
-    dateField.appendChild(dateInput);
-
-    const timesWrap = document.createElement("div");
-    timesWrap.className = "option-editor-times";
-
-    const startWrapper = document.createElement("label");
-    startWrapper.className = "field option-editor-field";
-    const startLabel = document.createElement("span");
-    startLabel.textContent = "Start";
-    const safeStart = Number.isFinite(option?.startMinute)
-      ? Math.max(0, Math.min(option.startMinute, minutesInDay - timeStep))
-      : Math.max(0, Math.min(defaultStart, minutesInDay - timeStep));
-    const startSelect = buildSelect(
-      timePoints.slice(0, -1),
-      safeStart,
-      !specifyTimesEnabled,
-      (value) => handlers.onStartChange?.(key, value)
-    );
-    startSelect.dataset.role = "start";
-    startSelect.dataset.optionKey = key;
-    startWrapper.appendChild(startLabel);
-    startWrapper.appendChild(startSelect);
-
-    const endWrapper = document.createElement("label");
-    endWrapper.className = "field option-editor-field";
-    const endLabel = document.createElement("span");
-    endLabel.textContent = "End";
-    const safeEnd = Number.isFinite(option?.endMinute)
-      ? Math.max(timeStep, Math.min(option.endMinute, minutesInDay))
-      : Math.max(timeStep, Math.min(defaultEnd, minutesInDay));
-    const endSelect = buildSelect(
-      timePoints,
-      safeEnd,
-      !specifyTimesEnabled,
-      (value) => handlers.onEndChange?.(key, value)
-    );
-    endSelect.dataset.role = "end";
-    endSelect.dataset.optionKey = key;
-    endWrapper.appendChild(endLabel);
-    endWrapper.appendChild(endSelect);
-
-    timesWrap.appendChild(startWrapper);
-    timesWrap.appendChild(endWrapper);
-
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.className = "option-editor-remove";
-    removeButton.setAttribute("aria-label", "Remove option");
-    removeButton.textContent = "\u00D7";
-    removeButton.disabled = Boolean(editor?.isLocked);
-    removeButton.addEventListener("click", () => handlers.onRemove?.(key));
-
-    row.appendChild(dateField);
-    row.appendChild(timesWrap);
-    row.appendChild(removeButton);
-    refs.editOptionsList.appendChild(row);
-  });
 };
 
 export const setEditOptionsFeedback = (message = "", tone = "info") => {
@@ -783,11 +676,13 @@ export const setEditOptionsSaving = (saving) => {
   if (refs.closeEditOptionsModal) {
     refs.closeEditOptionsModal.disabled = saving;
   }
-  if (refs.addEditOptionButton) {
-    refs.addEditOptionButton.disabled = saving;
+  if (refs.editOptionsTimeToggle) {
+    refs.editOptionsTimeToggle.disabled = saving;
   }
-  if (refs.editOptionsSpecifyToggle) {
-    refs.editOptionsSpecifyToggle.disabled = saving;
+  if (refs.editOptionsNavButtons) {
+    refs.editOptionsNavButtons.forEach((btn) => {
+      btn.disabled = saving;
+    });
   }
 };
 
