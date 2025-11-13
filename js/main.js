@@ -40,34 +40,16 @@ const NORMALIZE = (value) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-const TIMEZONE_CATALOG = [
-  { zone: "UTC", offset: "UTCВ±00:00", cities: ["Reykjavik", "Accra", "Dakar"] },
-  { zone: "Europe/London", offset: "UTC+00:00", cities: ["London", "Dublin", "Lisbon"] },
-  { zone: "Europe/Berlin", offset: "UTC+01:00", cities: ["Berlin", "Paris", "Madrid", "Rome"] },
-  { zone: "Europe/Moscow", offset: "UTC+03:00", cities: ["Moscow", "Istanbul", "Doha"] },
-  { zone: "Asia/Dubai", offset: "UTC+04:00", cities: ["Dubai", "Abu Dhabi", "Muscat"] },
-  { zone: "Asia/Kolkata", offset: "UTC+05:30", cities: ["Mumbai", "Delhi", "Bengaluru"] },
-  { zone: "Asia/Singapore", offset: "UTC+08:00", cities: ["Singapore", "Kuala Lumpur", "Perth"] },
-  { zone: "Asia/Tokyo", offset: "UTC+09:00", cities: ["Tokyo", "Seoul", "Osaka"] },
-  { zone: "Australia/Sydney", offset: "UTC+10:00", cities: ["Sydney", "Melbourne", "Brisbane"] },
-  {
-    zone: "America/New_York",
-    offset: "UTC-05:00",
-    cities: ["New York", "Washington DC", "Toronto", "Miami"],
-  },
-  { zone: "America/Chicago", offset: "UTC-06:00", cities: ["Chicago", "Dallas", "Mexico City"] },
-  { zone: "America/Denver", offset: "UTC-07:00", cities: ["Denver", "Phoenix", "Salt Lake City"] },
-  {
-    zone: "America/Los_Angeles",
-    offset: "UTC-08:00",
-    cities: ["Los Angeles", "San Francisco", "Seattle", "Vancouver"],
-  },
-  {
-    zone: "America/Sao_Paulo",
-    offset: "UTC-03:00",
-    cities: ["Sao Paulo", "Rio de Janeiro", "Buenos Aires"],
-  },
-];
+const TIMEZONE_CATALOG = [{ zone: "Europe/Moscow", offset: "UTC+03:00", cities: ["Moscow (GMT+3)"] }];
+const DEFAULT_TIMEZONE = TIMEZONE_CATALOG[0].zone;
+
+const formatTimezoneDisplay = (zone) => {
+  const entry = TIMEZONE_CATALOG.find((item) => item.zone === zone);
+  return entry?.cities?.[0] ?? zone;
+};
+
+const sanitizeTimezone = (zone) =>
+  TIMEZONE_CATALOG.some((entry) => entry.zone === zone) ? zone : DEFAULT_TIMEZONE;
 
 const SCREENS = {
   DASHBOARD: "dashboard",
@@ -216,7 +198,13 @@ const renderPollDetail = () => {
   const draft = getState().voteDraft ?? {};
   const readOnly = Boolean(getState().hasSubmittedVote);
   const hasSelections = hasPositiveSelection(draft);
-  renderPollSummary(poll, participants.length);
+  renderPollSummary(
+    {
+      ...poll,
+      timezone_label: formatTimezoneDisplay(poll.timezone),
+    },
+    participants.length
+  );
   renderPollGrid({
     options: poll.poll_options,
     participants,
@@ -342,7 +330,7 @@ const renderAll = () => {
     },
     TIME_CONFIG
   );
-  setTimezoneLabel(state.timezone);
+  setTimezoneLabel(formatTimezoneDisplay(state.timezone));
   const matches = filterTimezones(state.timezoneSearch || "");
   renderTimezoneList(matches, handleTimezoneSelect);
   setCreatePollEnabled(state.selectedDates.size > 0 && !state.isSubmitting);
@@ -452,7 +440,7 @@ const handleTimezoneSearch = (value) => {
 const handleTimezoneSelect = (zone) => {
   updateState({ timezone: zone });
   setTimezonePopoverVisible(false);
-  setTimezoneLabel(zone);
+  setTimezoneLabel(formatTimezoneDisplay(zone));
   schedulePersist();
 };
 
@@ -719,7 +707,8 @@ const handleDocumentClick = (event) => {
   if (!isTimezonePopoverVisible()) return;
   if (
     refs.timezonePopover.contains(event.target) ||
-    refs.timezoneButton.contains(event.target)
+    refs.timezoneButton.contains(event.target) ||
+    refs.pollTimezoneButton?.contains(event.target)
   ) {
     return;
   }
@@ -738,6 +727,7 @@ const attachEventHandlers = () => {
     handleTimeToggleChange(event.target.checked)
   );
   refs.timezoneButton.addEventListener("click", handleTimezoneButtonClick);
+  refs.pollTimezoneButton?.addEventListener("click", handleTimezoneButtonClick);
   refs.timezoneClose.addEventListener("click", () => setTimezonePopoverVisible(false));
   refs.timezoneSearch.addEventListener("input", (event) =>
     handleTimezoneSearch(event.target.value)
@@ -778,6 +768,7 @@ const hydrateState = async () => {
   if (savedState) {
     updateState(savedState);
   }
+  updateState({ timezone: sanitizeTimezone(getState().timezone) });
   const today = new Date();
   updateState({
     today,
@@ -809,3 +800,4 @@ const bootstrap = async () => {
 
 window.addEventListener("beforeunload", persistState);
 window.addEventListener("DOMContentLoaded", bootstrap);
+

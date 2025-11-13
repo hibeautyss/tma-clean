@@ -5,7 +5,7 @@ const state = {
   selectedDates: new Map(),
   specifyTimesEnabled: false,
   isSubmitting: false,
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+  timezone: "Europe/Moscow",
   timezoneSearch: "",
   today: initialToday,
   currentView: new Date(initialToday.getFullYear(), initialToday.getMonth(), 1),

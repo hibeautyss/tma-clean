@@ -69,6 +69,8 @@ export const initUI = () => {
   refs.selectionCount = document.getElementById("selectionCount");
   refs.timezoneButton = document.getElementById("timezoneButton");
   refs.timezoneLabel = document.getElementById("timezoneLabel");
+  refs.pollTimezoneButton = document.getElementById("pollTimezoneButton");
+  refs.pollTimezoneLabel = document.getElementById("pollTimezoneLabel");
   refs.timezonePopover = document.getElementById("timezonePopover");
   refs.timezoneSearch = document.getElementById("timezoneSearch");
   refs.timezoneList = document.getElementById("timezoneList");
@@ -85,7 +87,6 @@ export const initUI = () => {
   refs.pollDescription = document.getElementById("pollDescription");
   refs.pollStatusBadge = document.getElementById("pollStatusBadge");
   refs.pollOptionCount = document.getElementById("pollOptionCount");
-  refs.pollTimezoneChip = document.getElementById("pollTimezoneChip");
   refs.participantCount = document.getElementById("participantCount");
   refs.pollGrid = document.getElementById("pollGrid");
   refs.voteComment = document.getElementById("voteComment");
@@ -260,6 +261,9 @@ export const setTimezoneLabel = (label) => {
   if (refs.timezoneLabel) {
     refs.timezoneLabel.textContent = label;
   }
+  if (refs.pollTimezoneLabel) {
+    refs.pollTimezoneLabel.textContent = label;
+  }
 };
 
 export const setTimezonePopoverVisible = (visible) => {
@@ -391,9 +395,6 @@ export const renderPollSummary = (poll = {}, participantCount = 0) => {
   }
   if (refs.pollOptionCount) {
     refs.pollOptionCount.textContent = `${poll.poll_options?.length ?? 0} options`;
-  }
-  if (refs.pollTimezoneChip) {
-    refs.pollTimezoneChip.textContent = poll.timezone ?? "UTC";
   }
   if (refs.participantCount) {
     refs.participantCount.textContent = `${participantCount} participant${participantCount === 1 ? "" : "s"}`;
@@ -537,3 +538,5 @@ export const toggleNameModal = (open) => {
     refs.nameModal.hidden = !open;
   }
 };
+  refs.pollTimezoneButton = document.getElementById("pollTimezoneButton");
+  refs.pollTimezoneLabel = document.getElementById("pollTimezoneLabel");

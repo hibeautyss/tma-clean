@@ -336,10 +336,27 @@ textarea {
   text-align: left;
 }
 
+.timezone-btn.inline {
+  flex: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 93, 255, 0.35);
+  background: rgba(124, 93, 255, 0.15);
+  color: var(--text-primary);
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .timezone-btn .globe {
   width: 24px;
   height: 24px;
   color: var(--accent);
+}
+
+.timezone-btn.inline .globe {
+  width: 16px;
+  height: 16px;
 }
 
 .timezone-popover[hidden] {
@@ -829,17 +846,14 @@ textarea {
 }
 
 .timezone-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-top: 0;
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 8px;
 }
 
 .timezone-inline .globe {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .options-count {
@@ -872,12 +886,6 @@ textarea {
 .participant-chip strong {
   display: block;
   font-size: 14px;
-}
-
-.participant-chip small {
-  display: block;
-  font-size: 12px;
-  color: var(--text-secondary);
 }
 
 .grid-table {
