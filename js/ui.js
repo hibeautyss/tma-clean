@@ -329,15 +329,26 @@ export const setJoinFeedback = (message = "", tone = "info") => {
   refs.joinFeedback.classList.toggle("is-success", tone === "success");
 };
 
-const buildPollCard = (poll) => {
-  const card = document.createElement("button");
-  card.type = "button";
+const buildPollCard = (poll, handlers = {}) => {
+  const card = document.createElement("article");
   card.className = "poll-card";
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.dataset.pollId = poll.id ?? "";
+  card.dataset.shareCode = poll.share_code ?? "";
   const relationLabel = poll.relation === "created" ? "Created by you" : "Participating";
+  const statusPill = `<span class="status-pill">${poll.status ?? "live"}</span>`;
+  const manageButton =
+    poll.relation === "created"
+      ? '<button type="button" class="manage-btn" aria-label="Manage poll">Manage</button>'
+      : "";
   card.innerHTML = `
     <div class="poll-card-header">
       <h4>${poll.title ?? "Untitled poll"}</h4>
-      <span class="status-pill">${poll.status ?? "live"}</span>
+      <div class="poll-card-actions">
+        ${statusPill}
+        ${manageButton}
+      </div>
     </div>
     <div class="relation-tag">${relationLabel}</div>
     <div class="poll-card-footer">
@@ -345,10 +356,29 @@ const buildPollCard = (poll) => {
       <span>${formatTimestamp(poll.timestamp)}</span>
     </div>
   `;
+  const handleSelect = () => handlers.onSelect?.(poll);
+  if (handleSelect) {
+    card.addEventListener("click", handleSelect);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handleSelect();
+      }
+    });
+  }
+  if (poll.relation === "created") {
+    const manageBtn = card.querySelector(".manage-btn");
+    if (manageBtn && handlers.onManage) {
+      manageBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        handlers.onManage(poll);
+      });
+    }
+  }
   return card;
 };
 
-export const renderPollHistory = (items = []) => {
+export const renderPollHistory = (items = [], handlers = {}) => {
   if (!refs.pollsList || !refs.pollsEmpty) return;
   refs.pollsList.innerHTML = "";
   if (!items.length) {
@@ -357,7 +387,7 @@ export const renderPollHistory = (items = []) => {
   }
   refs.pollsEmpty.hidden = true;
   items.forEach((poll) => {
-    refs.pollsList.appendChild(buildPollCard(poll));
+    refs.pollsList.appendChild(buildPollCard(poll, handlers));
   });
 };
 
@@ -538,5 +568,3 @@ export const toggleNameModal = (open) => {
     refs.nameModal.hidden = !open;
   }
 };
-  refs.pollTimezoneButton = document.getElementById("pollTimezoneButton");
-  refs.pollTimezoneLabel = document.getElementById("pollTimezoneLabel");

@@ -84,34 +84,86 @@ const getPollFilters = () => {
 };
 
 const getPollHistory = () => (Array.isArray(getState().pollHistory) ? getState().pollHistory : []);
+const getPollHistoryKey = (entry) => entry?.id ?? entry?.share_code ?? null;
+const getTimestampValue = (value) => {
+  if (!value) return 0;
+  const parsed = new Date(value).valueOf();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const dedupePollHistory = (entries = []) => {
+  if (!Array.isArray(entries)) return [];
+  const indexByKey = new Map();
+  const cleaned = [];
+  entries.forEach((entry) => {
+    if (!entry) return;
+    const key = getPollHistoryKey(entry);
+    if (!key) {
+      cleaned.push({ ...entry });
+      return;
+    }
+    if (!indexByKey.has(key)) {
+      indexByKey.set(key, cleaned.length);
+      cleaned.push({ ...entry });
+      return;
+    }
+    const existingIndex = indexByKey.get(key);
+    const existing = cleaned[existingIndex];
+    const relation =
+      existing.relation === "created" || entry.relation === "created"
+        ? "created"
+        : existing.relation;
+    const timestamp =
+      getTimestampValue(entry.timestamp) > getTimestampValue(existing.timestamp)
+        ? entry.timestamp
+        : existing.timestamp;
+    cleaned[existingIndex] = {
+      ...existing,
+      relation,
+      timestamp,
+    };
+  });
+  return cleaned;
+};
 
 const renderPollSection = () => {
   const filters = getPollFilters();
-  const history = getPollHistory()
-    .filter((entry) => normalizeStatus(entry.status ?? filters.status) === filters.status)
-    .filter((entry) => !filters.createdOnly || entry.relation === "created")
-    .sort(
-      (a, b) =>
-        new Date(b.timestamp ?? 0).valueOf() - new Date(a.timestamp ?? 0).valueOf()
-    );
+  const history = dedupePollHistory(
+    getPollHistory()
+      .filter((entry) => normalizeStatus(entry.status ?? filters.status) === filters.status)
+      .filter((entry) => !filters.createdOnly || entry.relation === "created")
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp ?? 0).valueOf() - new Date(a.timestamp ?? 0).valueOf()
+    )
+  );
   setPollTabActive(filters.status);
   setCreatedOnlyFilter(filters.createdOnly);
-  renderPollHistory(history);
+  renderPollHistory(history, {
+    onSelect: handleHistorySelect,
+    onManage: handleHistoryManage,
+  });
 };
 
 const recordPollHistoryEntry = (poll, relation) => {
   if (!poll?.id && !poll?.share_code) {
     return;
   }
+  const currentUserId = getState().telegramUser?.id;
+  const derivedRelation =
+    relation === "created" || (poll.creator?.id && poll.creator.id === currentUserId)
+      ? "created"
+      : relation ?? "joined";
   const entry = {
     id: poll.id,
     share_code: poll.share_code,
     title: poll.title ?? "Untitled poll",
     status: normalizeStatus(poll.status ?? POLL_STATUSES[0]),
-    relation,
+    relation: derivedRelation,
+    creator_id: poll.creator?.id ?? null,
     timestamp: poll.created_at ?? new Date().toISOString(),
   };
-  const history = [entry, ...getPollHistory()];
+  const history = dedupePollHistory([entry, ...getPollHistory()]);
   updateState({ pollHistory: history });
   renderPollSection();
   schedulePersist();
@@ -127,6 +179,32 @@ const syncScreenVisibility = (screen) => {
   setScreenVisibility(normalized);
   return normalized;
 };
+
+const openPollFromHistory = async (entry, relationOverride) => {
+  if (!entry) return;
+  const target = {
+    pollId: entry.id,
+    shareCode: entry.share_code,
+  };
+  if (!target.pollId && !target.shareCode) {
+    setJoinFeedback("Missing poll reference.", "error");
+    return;
+  }
+  try {
+    const poll = await fetchPollDetail(target);
+    if (!poll) {
+      setJoinFeedback("Unable to load that poll.", "error");
+      return;
+    }
+    applyPollDetail(poll, relationOverride ?? entry.relation ?? "joined");
+  } catch (error) {
+    console.error("Failed to open poll from history", error);
+    setJoinFeedback(error.message ?? "Unable to open that poll right now.", "error");
+  }
+};
+
+const handleHistorySelect = (entry) => openPollFromHistory(entry);
+const handleHistoryManage = (entry) => openPollFromHistory(entry, "created");
 
 const setActiveScreen = (screen) => {
   const normalized = syncScreenVisibility(screen);
@@ -469,14 +547,14 @@ const handleJoinPoll = async () => {
     return;
   }
   const shareCode = trimmed.toUpperCase();
-  setJoinFeedback(`Looking up ${shareCode}...`, "info");
+  setJoinFeedback("");
   try {
     const poll = await fetchPollDetail({ shareCode });
     if (!poll) {
       setJoinFeedback("No poll found with that code.", "error");
       return;
     }
-    setJoinFeedback(`Loaded "${poll.title ?? "Untitled poll"}".`, "success");
+    setJoinFeedback("");
     refs.joinCodeInput && (refs.joinCodeInput.value = "");
     applyPollDetail(poll, "joined");
   } catch (error) {
@@ -768,6 +846,7 @@ const hydrateState = async () => {
   if (savedState) {
     updateState(savedState);
   }
+  updateState({ pollHistory: dedupePollHistory(getPollHistory()) });
   updateState({ timezone: sanitizeTimezone(getState().timezone) });
   const today = new Date();
   updateState({

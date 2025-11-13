@@ -143,21 +143,6 @@
                   </svg>
                   <span id="timezoneLabel">Loading…</span>
                 </button>
-                <div class="timezone-popover" id="timezonePopover" hidden>
-                  <header>
-                    <input
-                      type="search"
-                      class="timezone-search"
-                      id="timezoneSearch"
-                      placeholder="Search city or timezone"
-                    />
-                    <button type="button" class="timezone-close" id="timezoneClose" aria-label="Close">
-                      &times;
-                    </button>
-                  </header>
-                  <ul class="timezone-list" id="timezoneList"></ul>
-                  <div class="timezone-empty" id="timezoneEmpty" hidden>No matches found.</div>
-                </div>
               </div>
             </div>
             <div class="selection-card">
@@ -265,6 +250,20 @@
         </section>
       </div>
     </main>
+
+    <div class="timezone-popover" id="timezonePopover" hidden>
+      <header>
+        <input
+          type="search"
+          class="timezone-search"
+          id="timezoneSearch"
+          placeholder="Search city or timezone"
+        />
+        <button type="button" class="timezone-close" id="timezoneClose" aria-label="Close">&times;</button>
+      </header>
+      <ul class="timezone-list" id="timezoneList"></ul>
+      <div class="timezone-empty" id="timezoneEmpty" hidden>No matches found.</div>
+    </div>
 
     <div id="modalScrim" class="modal-scrim" hidden></div>
     <div id="nameModal" class="modal-shell" hidden aria-modal="true" role="dialog">
