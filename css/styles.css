@@ -714,7 +714,8 @@ textarea {
   background: var(--accent-strong);
 }
 
-.primary-btn:not(:disabled):active {
+.primary-btn:not(:disabled):active,
+.primary-btn.is-pressing {
   transform: translateY(2px) scale(0.98);
   box-shadow: 0 4px 16px rgba(92, 60, 243, 0.3);
   background: linear-gradient(120deg, var(--accent-strong), var(--accent));

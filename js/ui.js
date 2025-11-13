@@ -277,6 +277,9 @@ export const setCreatePollEnabled = (enabled) => {
   if (!refs.createPollButton) return;
   refs.createPollButton.disabled = !enabled;
   refs.createPollButton.classList.toggle("active", enabled);
+  if (!enabled) {
+    refs.createPollButton.classList.remove("is-pressing");
+  }
 };
 
 export const setFormFeedback = (message = "", tone = "info") => {

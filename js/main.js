@@ -396,6 +396,26 @@ const handleNewPollClick = () => setActiveScreen(SCREENS.CREATE);
 
 const handleBackToDashboard = () => setActiveScreen(SCREENS.DASHBOARD);
 
+const wirePressAnimation = (button) => {
+  if (!button) return;
+  const add = (event) => {
+    if (button.disabled) return;
+    button.classList.add("is-pressing");
+    if (button.setPointerCapture) {
+      try {
+        button.setPointerCapture(event.pointerId);
+      } catch {
+        // ignore capture errors
+      }
+    }
+  };
+  const remove = () => button.classList.remove("is-pressing");
+  button.addEventListener("pointerdown", add);
+  ["pointerup", "pointerleave", "pointercancel", "lostpointercapture"].forEach((evt) =>
+    button.addEventListener(evt, remove)
+  );
+};
+
 const getEventDetails = () => ({
   title: refs.titleInput?.value ?? "",
   location: refs.locationInput?.value ?? "",
@@ -500,6 +520,8 @@ const attachEventHandlers = () => {
   refs.createdOnlyToggle?.addEventListener("change", (event) =>
     handleCreatedOnlyToggle(event.target.checked)
   );
+  wirePressAnimation(refs.createPollButton);
+  wirePressAnimation(refs.joinPollButton);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };
