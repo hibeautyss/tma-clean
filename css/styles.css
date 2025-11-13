@@ -739,6 +739,10 @@ textarea {
   background: linear-gradient(120deg, var(--accent-strong), var(--accent));
 }
 
+.poll-participants .primary-btn {
+  margin-top: 18px;
+}
+
 @media (min-width: 520px) {
   body {
     display: flex;
@@ -826,7 +830,7 @@ textarea {
   gap: 6px;
   font-size: 13px;
   color: var(--text-secondary);
-  margin-top: 0px;
+  margin-top: 0;
 }
 
 .timezone-inline .globe {
@@ -839,7 +843,7 @@ textarea {
 }
 
 .poll-grid {
-  margin-top: 12px;
+  margin-top: 0px;
   overflow-x: auto;
 }
 
