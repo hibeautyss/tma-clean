@@ -12,6 +12,12 @@ const prepareForStorage = (state) => ({
   timezoneSearch: state.timezoneSearch ?? "",
   today: state.today?.toISOString?.() ?? null,
   currentView: state.currentView?.toISOString?.() ?? null,
+  screen: state.screen ?? "dashboard",
+  pollHistory: Array.isArray(state.pollHistory) ? state.pollHistory : [],
+  pollFilters: {
+    status: state.pollFilters?.status ?? "live",
+    createdOnly: Boolean(state.pollFilters?.createdOnly),
+  },
 });
 
 const baseHeaders = Object.freeze({

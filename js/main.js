@@ -1,5 +1,5 @@
 import { initTelegram, getTelegramUser } from "./telegram.js";
-import { loadUserState, saveUserState, createRemotePoll } from "./api.js";
+import { loadUserState, saveUserState, createRemotePoll, fetchPoll } from "./api.js";
 import { getState, updateState } from "./state.js";
 import {
   initUI,
@@ -12,6 +12,11 @@ import {
   setTimezoneSearchValue,
   setCreatePollEnabled,
   setFormFeedback,
+  setScreenVisibility,
+  setPollTabActive,
+  renderPollHistory,
+  setCreatedOnlyFilter,
+  setJoinFeedback,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -28,7 +33,7 @@ const NORMALIZE = (value) =>
     .replace(/[\u0300-\u036f]/g, "");
 
 const TIMEZONE_CATALOG = [
-  { zone: "UTC", offset: "UTC±00:00", cities: ["Reykjavik", "Accra", "Dakar"] },
+  { zone: "UTC", offset: "UTCВ±00:00", cities: ["Reykjavik", "Accra", "Dakar"] },
   { zone: "Europe/London", offset: "UTC+00:00", cities: ["London", "Dublin", "Lisbon"] },
   { zone: "Europe/Berlin", offset: "UTC+01:00", cities: ["Berlin", "Paris", "Madrid", "Rome"] },
   { zone: "Europe/Moscow", offset: "UTC+03:00", cities: ["Moscow", "Istanbul", "Doha"] },
@@ -56,6 +61,11 @@ const TIMEZONE_CATALOG = [
   },
 ];
 
+const SCREENS = {
+  DASHBOARD: "dashboard",
+  CREATE: "create",
+};
+
 let refs = {};
 let saveTimer = null;
 const CREATE_LABEL_DEFAULT = "Create Poll";
@@ -66,6 +76,67 @@ const getStorageId = () => getState().telegramUser?.id ?? "guest";
 const schedulePersist = () => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(persistState, 200);
+};
+
+const POLL_STATUSES = ["live", "paused", "finished"];
+
+const normalizeStatus = (status) => (POLL_STATUSES.includes(status) ? status : POLL_STATUSES[0]);
+
+const getPollFilters = () => {
+  const filters = getState().pollFilters ?? {};
+  return {
+    status: normalizeStatus(filters.status),
+    createdOnly: Boolean(filters.createdOnly),
+  };
+};
+
+const getPollHistory = () => (Array.isArray(getState().pollHistory) ? getState().pollHistory : []);
+
+const renderPollSection = () => {
+  const filters = getPollFilters();
+  const history = getPollHistory()
+    .filter((entry) => normalizeStatus(entry.status ?? filters.status) === filters.status)
+    .filter((entry) => !filters.createdOnly || entry.relation === "created")
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp ?? 0).valueOf() - new Date(a.timestamp ?? 0).valueOf()
+    );
+  setPollTabActive(filters.status);
+  setCreatedOnlyFilter(filters.createdOnly);
+  renderPollHistory(history);
+};
+
+const recordPollHistoryEntry = (poll, relation) => {
+  if (!poll?.id && !poll?.share_code) {
+    return;
+  }
+  const entry = {
+    id: poll.id,
+    share_code: poll.share_code,
+    title: poll.title ?? "Untitled poll",
+    status: normalizeStatus(poll.status ?? POLL_STATUSES[0]),
+    relation,
+    timestamp: poll.created_at ?? new Date().toISOString(),
+  };
+  const history = [entry, ...getPollHistory()];
+  updateState({ pollHistory: history });
+  renderPollSection();
+  schedulePersist();
+};
+
+const syncScreenVisibility = (screen) => {
+  const normalized = screen === SCREENS.CREATE ? SCREENS.CREATE : SCREENS.DASHBOARD;
+  setScreenVisibility(normalized);
+  return normalized;
+};
+
+const setActiveScreen = (screen) => {
+  const normalized = syncScreenVisibility(screen);
+  updateState({ screen: normalized });
+  schedulePersist();
+  if (normalized === SCREENS.CREATE) {
+    renderAll();
+  }
 };
 
 const formatDisplayDate = (date, options) =>
@@ -271,6 +342,60 @@ const handleTimezoneSelect = (zone) => {
   schedulePersist();
 };
 
+const handlePollTabChange = (status) => {
+  const normalized = normalizeStatus(status);
+  const current = getPollFilters();
+  if (current.status === normalized) return;
+  updateState({ pollFilters: { ...current, status: normalized } });
+  renderPollSection();
+  schedulePersist();
+};
+
+const handleCreatedOnlyToggle = (checked) => {
+  const current = getPollFilters();
+  updateState({ pollFilters: { ...current, createdOnly: checked } });
+  renderPollSection();
+  schedulePersist();
+};
+
+const handleJoinPoll = async () => {
+  const raw = refs.joinCodeInput?.value ?? "";
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    setJoinFeedback("Enter a share code first.", "error");
+    refs.joinCodeInput?.focus();
+    return;
+  }
+  const shareCode = trimmed.toUpperCase();
+  setJoinFeedback(`Looking up ${shareCode}...`, "info");
+  try {
+    const poll = await fetchPoll({ shareCode });
+    if (!poll) {
+      setJoinFeedback("No poll found with that code.", "error");
+      return;
+    }
+    setJoinFeedback(`Joined "${poll.title ?? "Untitled poll"}".`, "success");
+    if (refs.joinCodeInput) {
+      refs.joinCodeInput.value = "";
+    }
+    recordPollHistoryEntry(poll, "joined");
+  } catch (error) {
+    console.error("Failed to join poll", error);
+    setJoinFeedback(error.message ?? "Unable to join poll. Please try again.", "error");
+  }
+};
+
+const handleJoinInputKeydown = (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    handleJoinPoll();
+  }
+};
+
+const handleNewPollClick = () => setActiveScreen(SCREENS.CREATE);
+
+const handleBackToDashboard = () => setActiveScreen(SCREENS.DASHBOARD);
+
 const getEventDetails = () => ({
   title: refs.titleInput?.value ?? "",
   location: refs.locationInput?.value ?? "",
@@ -327,6 +452,7 @@ const handleCreatePoll = async () => {
       `Poll created! Share code ${poll.share_code} with participants.`,
       "success"
     );
+    recordPollHistoryEntry(poll, "created");
     resetPlannerState();
   } catch (error) {
     console.error("Failed to create poll", error);
@@ -364,6 +490,16 @@ const attachEventHandlers = () => {
     handleTimezoneSearch(event.target.value)
   );
   refs.createPollButton.addEventListener("click", handleCreatePoll);
+  refs.newPollButton?.addEventListener("click", handleNewPollClick);
+  refs.backToDashboard?.addEventListener("click", handleBackToDashboard);
+  refs.joinPollButton?.addEventListener("click", handleJoinPoll);
+  refs.joinCodeInput?.addEventListener("keydown", handleJoinInputKeydown);
+  refs.pollTabs?.forEach((tab) =>
+    tab.addEventListener("click", () => handlePollTabChange(tab.dataset.pollStatus))
+  );
+  refs.createdOnlyToggle?.addEventListener("change", (event) =>
+    handleCreatedOnlyToggle(event.target.checked)
+  );
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };
@@ -395,8 +531,11 @@ const bootstrap = async () => {
     refs.createPollButton.textContent = CREATE_LABEL_DEFAULT;
   }
   await hydrateState();
-  attachEventHandlers();
+  syncScreenVisibility(getState().screen);
+  renderPollSection();
+  setJoinFeedback("");
   setFormFeedback("");
+  attachEventHandlers();
   renderAll();
 };
 

@@ -9,118 +9,189 @@
   </head>
   <body>
     <main class="mobile-shell">
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Event</p>
-            <h2>Describe what your event is about</h2>
+      <div id="dashboardView" class="dashboard-view">
+        <section class="panel quick-panel">
+          <div class="panel-header">
+            <p class="eyebrow">New poll</p>
+            <h2>Start something new</h2>
           </div>
-        </div>
-        <div class="panel-body">
-          <form class="event-form">
-            <div class="field">
-              <label for="title">Title</label>
-              <input id="title" type="text" placeholder="Monthly Meetup" autocomplete="off" />
+          <button type="button" class="action-tile" id="newPollButton">
+            <span class="tile-icon">+</span>
+            <div class="tile-copy">
+              <strong>Create poll</strong>
+              <p>Draft availability options for your group.</p>
             </div>
-            <div class="field">
-              <label for="location">Location <span class="hint">(Optional)</span></label>
-              <input id="location" type="text" placeholder="Joe's Coffee Shop" autocomplete="off" />
-            </div>
-            <div class="field">
-              <label for="description">Description <span class="hint">(Optional)</span></label>
-              <textarea id="description" placeholder="Hey everyone, please choose the dates that work for you!"></textarea>
-            </div>
-          </form>
-          <div id="formFeedback" class="form-feedback" role="status" aria-live="polite" hidden></div>
-        </div>
-      </section>
+            <span class="tile-chevron" aria-hidden="true">›</span>
+          </button>
+        </section>
 
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Calendar</p>
-            <h2>Select potential dates or times for your event</h2>
+        <section class="panel join-panel">
+          <div class="panel-header">
+            <p class="eyebrow">Join an existing poll</p>
+            <h2>Enter a share code</h2>
           </div>
+          <div class="panel-body">
+            <div class="join-form">
+              <input
+                id="joinCodeInput"
+                type="text"
+                placeholder="e.g. 0CD80087"
+                autocomplete="off"
+                inputmode="text"
+              />
+              <button type="button" class="primary-btn" id="joinPollButton">Join poll</button>
+            </div>
+            <div id="joinFeedback" class="form-feedback" role="status" aria-live="polite" hidden></div>
+          </div>
+        </section>
+
+        <section class="panel polls-panel">
+          <div class="panel-header">
+            <p class="eyebrow">Polls</p>
+            <h2>Your activity</h2>
+          </div>
+          <div class="polls-controls">
+            <div class="poll-tabs">
+              <button type="button" class="poll-tab" data-poll-status="live">Live</button>
+              <button type="button" class="poll-tab" data-poll-status="paused">Paused</button>
+              <button type="button" class="poll-tab" data-poll-status="finished">Finished</button>
+            </div>
+            <label class="filter-toggle">
+              <input type="checkbox" id="createdOnlyToggle" />
+              <span>Created by me</span>
+            </label>
+          </div>
+          <div id="pollsList" class="polls-list"></div>
+          <div id="pollsEmpty" class="polls-empty">No polls yet. Start by creating one above.</div>
+        </section>
+      </div>
+
+      <div id="createView" class="create-view" hidden>
+        <div class="create-header">
+          <button type="button" class="ghost-btn" id="backToDashboard" aria-label="Back to dashboard">
+            <span aria-hidden="true">‹</span> Dashboard
+          </button>
+          <span class="create-label">New poll</span>
         </div>
-        <div class="calendar-body">
-          <div class="calendar-stack">
-            <div class="calendar-card">
-              <div class="calendar-controls">
-                <button type="button" class="nav-btn" data-direction="prev" aria-label="Previous month">&#8249;</button>
-                <div class="month-label" id="monthLabel">Month YYYY</div>
-                <button type="button" class="nav-btn" data-direction="next" aria-label="Next month">&#8250;</button>
-              </div>
-              <div class="weekdays">
-                <span>Mo</span>
-                <span>Tu</span>
-                <span>We</span>
-                <span>Th</span>
-                <span>Fr</span>
-                <span>Sa</span>
-                <span>Su</span>
-              </div>
-              <div class="calendar-grid" id="calendarGrid"></div>
-            </div>
-            <div class="timezone-bar">
-              <button type="button" class="timezone-btn" id="timezoneButton">
-                <svg class="globe" viewBox="0 0 20 20" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M10 1.25a8.75 8.75 0 1 0 0 17.5 8.75 8.75 0 0 0 0-17.5Zm6.99 8h-2.67c-.15-2.23-.9-4.27-2.02-5.77a7.28 7.28 0 0 1 4.69 5.77Zm-7.24-6.3v6.3H6.52c.16-2.05.87-4.01 1.94-5.54.42-.6.86-.68 1.29-.76Zm0 7.55v6.3c-.43-.08-.87-.17-1.29-.76a12 12 0 0 1-1.94-5.54Zm1.25 6.3v-6.3h3.53c-.16 2.05-.87 4.02-1.94 5.54-.42.6-.86.68-1.59.76Zm0-7.55V2.95c.73.08 1.17.16 1.59.76 1.07 1.52 1.78 3.5 1.94 5.54Zm-5.05-5.8c-1.12 1.5-1.87 3.54-2.02 5.77H2.26a7.28 7.28 0 0 1 4.69-5.77ZM2.26 10h2.67c.15 2.23.9 4.27 2.02 5.77a7.28 7.28 0 0 1-4.69-5.77Zm9.78 5.77c1.12-1.5 1.87-3.54 2.02-5.77h2.67a7.28 7.28 0 0 1-4.69 5.77Z"
-                  />
-                </svg>
-                <span id="timezoneLabel">Loading…</span>
-              </button>
-              <div class="timezone-popover" id="timezonePopover" hidden>
-                <header>
-                  <input
-                    type="search"
-                    class="timezone-search"
-                    id="timezoneSearch"
-                    placeholder="Search city or timezone"
-                  />
-                  <button type="button" class="timezone-close" id="timezoneClose" aria-label="Close">
-                    &times;
-                  </button>
-                </header>
-                <ul class="timezone-list" id="timezoneList"></ul>
-                <div class="timezone-empty" id="timezoneEmpty" hidden>No matches found.</div>
-              </div>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Event</p>
+              <h2>Describe what your event is about</h2>
             </div>
           </div>
+          <div class="panel-body">
+            <form class="event-form">
+              <div class="field">
+                <label for="title">Title</label>
+                <input id="title" type="text" placeholder="Monthly Meetup" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="location">Location <span class="hint">(Optional)</span></label>
+                <input id="location" type="text" placeholder="Joe's Coffee Shop" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="description">Description <span class="hint">(Optional)</span></label>
+                <textarea
+                  id="description"
+                  placeholder="Hey everyone, please choose the dates that work for you!"
+                ></textarea>
+              </div>
+            </form>
+            <div id="formFeedback" class="form-feedback" role="status" aria-live="polite" hidden></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Calendar</p>
+              <h2>Select potential dates or times for your event</h2>
+            </div>
+          </div>
+          <div class="calendar-body">
+            <div class="calendar-stack">
+              <div class="calendar-card">
+                <div class="calendar-controls">
+                  <button type="button" class="nav-btn" data-direction="prev" aria-label="Previous month">
+                    &#8249;
+                  </button>
+                  <div class="month-label" id="monthLabel">Month YYYY</div>
+                  <button type="button" class="nav-btn" data-direction="next" aria-label="Next month">
+                    &#8250;
+                  </button>
+                </div>
+                <div class="weekdays">
+                  <span>Mo</span>
+                  <span>Tu</span>
+                  <span>We</span>
+                  <span>Th</span>
+                  <span>Fr</span>
+                  <span>Sa</span>
+                  <span>Su</span>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+              </div>
+              <div class="timezone-bar">
+                <button type="button" class="timezone-btn" id="timezoneButton">
+                  <svg class="globe" viewBox="0 0 20 20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M10 1.25a8.75 8.75 0 1 0 0 17.5 8.75 8.75 0 0 0 0-17.5Zm6.99 8h-2.67c-.15-2.23-.9-4.27-2.02-5.77a7.28 7.28 0 0 1 4.69 5.77Zm-7.24-6.3v6.3H6.52c.16-2.05.87-4.01 1.94-5.54.42-.6.86-.68 1.29-.76Zm0 7.55v6.3c-.43-.08-.87-.17-1.29-.76a12 12 0 0 1-1.94-5.54Zm1.25 6.3v-6.3h3.53c-.16 2.05-.87 4.02-1.94 5.54-.42.6-.86.68-1.59.76Zm0-7.55V2.95c.73.08 1.17.16 1.59.76 1.07 1.52 1.78 3.5 1.94 5.54Zm-5.05-5.8c-1.12 1.5-1.87 3.54-2.02 5.77H2.26a7.28 7.28 0 0 1 4.69-5.77ZM2.26 10h2.67c.15 2.23.9 4.27 2.02 5.77a7.28 7.28 0 0 1 4.69-5.77Zm9.78 5.77c1.12-1.5 1.87-3.54 2.02-5.77h2.67a7.28 7.28 0 0 1-4.69 5.77Z"
+                    />
+                  </svg>
+                  <span id="timezoneLabel">Loading…</span>
+                </button>
+                <div class="timezone-popover" id="timezonePopover" hidden>
+                  <header>
+                    <input
+                      type="search"
+                      class="timezone-search"
+                      id="timezoneSearch"
+                      placeholder="Search city or timezone"
+                    />
+                    <button type="button" class="timezone-close" id="timezoneClose" aria-label="Close">
+                      &times;
+                    </button>
+                  </header>
+                  <ul class="timezone-list" id="timezoneList"></ul>
+                  <div class="timezone-empty" id="timezoneEmpty" hidden>No matches found.</div>
+                </div>
+              </div>
+            </div>
             <div class="selection-card">
               <div class="selection-header">
                 <div class="selection-copy">
-                <p class="eyebrow">Specify times</p>
-                <h3>Include start and end times for each option</h3>
-                <span class="selection-count" id="selectionCount">0 dates</span>
+                  <p class="eyebrow">Specify times</p>
+                  <h3>Include start and end times for each option</h3>
+                  <span class="selection-count" id="selectionCount">0 dates</span>
+                </div>
+                <label class="toggle" aria-label="Toggle time slots">
+                  <input type="checkbox" id="timeToggle" />
+                  <span class="toggle-track"></span>
+                </label>
               </div>
-              <label class="toggle" aria-label="Toggle time slots">
-                <input type="checkbox" id="timeToggle" />
-                <span class="toggle-track"></span>
-              </label>
-            </div>
-            <div class="selection-body" id="selectionBody">
-              <div class="selection-placeholder" id="selectionEmpty">
-                <svg viewBox="0 0 64 64" aria-hidden="true">
-                  <rect x="12" y="18" width="40" height="34" rx="8"></rect>
-                  <line x1="12" y1="26" x2="52" y2="26"></line>
-                  <rect x="22" y="34" width="20" height="12" rx="3"></rect>
-                </svg>
-                <p>No dates selected</p>
-                <p>Choose days on the calendar to add them here.</p>
+              <div class="selection-body" id="selectionBody">
+                <div class="selection-placeholder" id="selectionEmpty">
+                  <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <rect x="12" y="18" width="40" height="34" rx="8"></rect>
+                    <line x1="12" y1="26" x2="52" y2="26"></line>
+                    <rect x="22" y="34" width="20" height="12" rx="3"></rect>
+                  </svg>
+                  <p>No dates selected</p>
+                  <p>Choose days on the calendar to add them here.</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-      <footer class="cta-bar">
-        <button type="button" id="createPollButton" class="primary-btn" disabled>Create Poll</button>
-      </footer>
+        </section>
+        <footer class="cta-bar">
+          <button type="button" id="createPollButton" class="primary-btn" disabled>Create poll</button>
+        </footer>
+      </div>
     </main>
 
     <script type="module" src="./js/main.js"></script>
   </body>
 </html>
-
-

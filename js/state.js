@@ -9,10 +9,17 @@ const state = {
   timezoneSearch: "",
   today: initialToday,
   currentView: new Date(initialToday.getFullYear(), initialToday.getMonth(), 1),
+  screen: "dashboard",
+  pollHistory: [],
+  pollFilters: {
+    status: "live",
+    createdOnly: false,
+  },
 };
 
 const mapKeys = new Set(["selectedDates"]);
 const dateKeys = new Set(["today", "currentView"]);
+const arrayKeys = new Set(["pollHistory"]);
 
 const toMap = (value) => {
   if (value instanceof Map) return value;
@@ -44,6 +51,8 @@ const normalizePatch = (patch = {}) => {
       normalized[key] = toMap(value);
     } else if (dateKeys.has(key)) {
       normalized[key] = toDate(value);
+    } else if (arrayKeys.has(key)) {
+      normalized[key] = Array.isArray(value) ? [...value] : [];
     } else {
       normalized[key] = value;
     }

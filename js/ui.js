@@ -21,7 +21,37 @@ const formatDuration = (minutes) => {
   return `${mins}m`;
 };
 
+const formatTimestamp = (value) => {
+  if (!value) return "Unknown time";
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) {
+    return "Unknown time";
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+export const setScreenVisibility = (screen) => {
+  if (refs.dashboardView) {
+    refs.dashboardView.hidden = screen !== "dashboard";
+  }
+  if (refs.createView) {
+    refs.createView.hidden = screen !== "create";
+  }
+};
+
 export const initUI = () => {
+  refs.dashboardView = document.getElementById("dashboardView");
+  refs.createView = document.getElementById("createView");
+  refs.newPollButton = document.getElementById("newPollButton");
+  refs.backToDashboard = document.getElementById("backToDashboard");
+  refs.joinCodeInput = document.getElementById("joinCodeInput");
+  refs.joinPollButton = document.getElementById("joinPollButton");
+  refs.joinFeedback = document.getElementById("joinFeedback");
   refs.titleInput = document.getElementById("title");
   refs.locationInput = document.getElementById("location");
   refs.descriptionInput = document.getElementById("description");
@@ -40,8 +70,25 @@ export const initUI = () => {
   refs.timezoneEmpty = document.getElementById("timezoneEmpty");
   refs.timezoneClose = document.getElementById("timezoneClose");
   refs.createPollButton = document.getElementById("createPollButton");
+  refs.pollTabs = document.querySelectorAll("[data-poll-status]");
+  refs.createdOnlyToggle = document.getElementById("createdOnlyToggle");
+  refs.pollsList = document.getElementById("pollsList");
+  refs.pollsEmpty = document.getElementById("pollsEmpty");
   refs.formFeedback = document.getElementById("formFeedback");
   return refs;
+};
+
+export const setPollTabActive = (status) => {
+  if (!refs.pollTabs) return;
+  refs.pollTabs.forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.pollStatus === status);
+  });
+};
+
+export const setCreatedOnlyFilter = (checked) => {
+  if (refs.createdOnlyToggle) {
+    refs.createdOnlyToggle.checked = checked;
+  }
 };
 
 export const renderCalendar = (view, handlers = {}) => {
@@ -239,4 +286,45 @@ export const setFormFeedback = (message = "", tone = "info") => {
   refs.formFeedback.hidden = !content;
   refs.formFeedback.classList.toggle("is-error", tone === "error");
   refs.formFeedback.classList.toggle("is-success", tone === "success");
+};
+
+export const setJoinFeedback = (message = "", tone = "info") => {
+  if (!refs.joinFeedback) return;
+  const content = message ?? "";
+  refs.joinFeedback.textContent = content;
+  refs.joinFeedback.hidden = !content;
+  refs.joinFeedback.classList.toggle("is-error", tone === "error");
+  refs.joinFeedback.classList.toggle("is-success", tone === "success");
+};
+
+const buildPollCard = (poll) => {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "poll-card";
+  const relationLabel = poll.relation === "created" ? "Created by you" : "Participating";
+  card.innerHTML = `
+    <div class="poll-card-header">
+      <h4>${poll.title ?? "Untitled poll"}</h4>
+      <span class="status-pill">${poll.status ?? "live"}</span>
+    </div>
+    <div class="relation-tag">${relationLabel}</div>
+    <div class="poll-card-footer">
+      <span>Code: ${poll.share_code ?? "N/A"}</span>
+      <span>${formatTimestamp(poll.timestamp)}</span>
+    </div>
+  `;
+  return card;
+};
+
+export const renderPollHistory = (items = []) => {
+  if (!refs.pollsList || !refs.pollsEmpty) return;
+  refs.pollsList.innerHTML = "";
+  if (!items.length) {
+    refs.pollsEmpty.hidden = false;
+    return;
+  }
+  refs.pollsEmpty.hidden = true;
+  items.forEach((poll) => {
+    refs.pollsList.appendChild(buildPollCard(poll));
+  });
 };
