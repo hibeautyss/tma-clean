@@ -214,20 +214,22 @@ const renderPollDetail = () => {
   if (!poll) return;
   const participants = getState().activePollVotes ?? [];
   const draft = getState().voteDraft ?? {};
+  const readOnly = Boolean(getState().hasSubmittedVote);
   const hasSelections = hasPositiveSelection(draft);
   renderPollSummary(poll, participants.length);
   renderPollGrid({
     options: poll.poll_options,
     participants,
     draft,
-    onToggle: handleDraftSlotToggle,
+    onToggle: readOnly ? undefined : handleDraftSlotToggle,
+    isReadOnly: readOnly,
   });
   const comments = participants
     .filter((participant) => participant.comment)
     .map((participant) => ({ name: participant.name, body: participant.comment }));
   renderCommentList(comments);
   setVoteCommentValue(getState().voteComment ?? "");
-  setContinueButtonEnabled(hasSelections);
+  setContinueButtonEnabled(!readOnly && hasSelections);
 };
 
 const applyPollDetail = (pollData, relation = "joined") => {
@@ -240,6 +242,7 @@ const applyPollDetail = (pollData, relation = "joined") => {
     voteComment: "",
     voteName: getDefaultParticipantName(),
     nameModalOpen: false,
+    hasSubmittedVote: false,
   });
   setVoteCommentValue("");
   setVoteFeedbackMessage("");
@@ -495,6 +498,7 @@ const handleJoinPoll = async () => {
 };
 
 const handleDraftSlotToggle = (optionId) => {
+  if (getState().hasSubmittedVote) return;
   const poll = getState().activePoll;
   if (!poll || !optionId) return;
   const currentDraft = { ...(getState().voteDraft ?? {}) };
@@ -505,6 +509,7 @@ const handleDraftSlotToggle = (optionId) => {
 };
 
 const handleVoteCommentChange = (value) => {
+  if (getState().hasSubmittedVote) return;
   updateState({ voteComment: value });
   setVoteFeedbackMessage("");
 };
@@ -534,6 +539,7 @@ const closeNameModal = () => {
 };
 
 const handleContinueVote = () => {
+  if (getState().hasSubmittedVote) return;
   const draft = getState().voteDraft ?? {};
   if (!hasPositiveSelection(draft)) {
     setVoteFeedbackMessage("Select at least one slot (green or yellow) first.", "error");
@@ -562,7 +568,7 @@ const refreshActivePoll = async () => {
 
 const handleSubmitVote = async () => {
   const poll = getState().activePoll;
-  if (!poll || getState().isVoting) return;
+  if (!poll || getState().isVoting || getState().hasSubmittedVote) return;
   const draft = getState().voteDraft ?? {};
   if (!hasPositiveSelection(draft)) {
     setVoteFeedbackMessage("Select at least one slot (green or yellow) first.", "error");
@@ -592,6 +598,7 @@ const handleSubmitVote = async () => {
       voteName: nameValue,
       nameModalOpen: false,
       isVoting: false,
+      hasSubmittedVote: true,
     });
     setVoteCommentValue("");
     toggleNameModal(false);

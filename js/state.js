@@ -22,6 +22,7 @@ const state = {
   voteName: "",
   isVoting: false,
   nameModalOpen: false,
+  hasSubmittedVote: false,
 };
 
 const mapKeys = new Set(["selectedDates"]);

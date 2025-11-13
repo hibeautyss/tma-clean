@@ -450,6 +450,7 @@ export const renderPollGrid = ({
   participants = [],
   draft = {},
   onToggle,
+  isReadOnly = false,
 } = {}) => {
   if (!refs.pollGrid) return;
   const table = document.createElement("table");
@@ -477,19 +478,21 @@ export const renderPollGrid = ({
 
   const tbody = document.createElement("tbody");
 
-  const youRow = document.createElement("tr");
-  youRow.className = "you-row";
-  const youCell = document.createElement("td");
-  youCell.innerHTML =
-    '<div class="participant-chip"><span class="avatar">Y</span><div><strong>You</strong><small>Draft</small></div></div>';
-  youRow.appendChild(youCell);
-  options.forEach((option) => {
-    const td = document.createElement("td");
-    const chip = buildAvailabilityChip(draft[option.id] ?? null, true, option.id, onToggle);
-    td.appendChild(chip);
-    youRow.appendChild(td);
-  });
-  tbody.appendChild(youRow);
+  if (!isReadOnly) {
+    const youRow = document.createElement("tr");
+    youRow.className = "you-row";
+    const youCell = document.createElement("td");
+    youCell.innerHTML =
+      '<div class="participant-chip"><span class="avatar">Y</span><div><strong>You</strong><small>Draft</small></div></div>';
+    youRow.appendChild(youCell);
+    options.forEach((option) => {
+      const td = document.createElement("td");
+      const chip = buildAvailabilityChip(draft[option.id] ?? null, true, option.id, onToggle);
+      td.appendChild(chip);
+      youRow.appendChild(td);
+    });
+    tbody.appendChild(youRow);
+  }
 
   participants.forEach((participant) => {
     const row = document.createElement("tr");
