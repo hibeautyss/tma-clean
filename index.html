@@ -192,15 +192,26 @@
             </div>
             <div class="poll-summary-actions">
               <span class="status-pill" id="pollStatusBadge">Live</span>
-              <button
-                type="button"
-                class="manage-btn"
-                id="pollManageButton"
-                aria-label="Manage poll"
-                hidden
-              >
-                Manage
-              </button>
+              <div class="manage-button-group">
+                <button
+                  type="button"
+                  class="manage-btn"
+                  id="pollManageButton"
+                  aria-label="Manage poll"
+                  aria-expanded="false"
+                  hidden
+                >
+                  Manage
+                </button>
+                <div class="manage-menu" id="manageMenu" hidden>
+                  <button type="button" class="manage-menu-item" id="manageEditDetails">
+                    Edit details
+                  </button>
+                  <button type="button" class="manage-menu-item" id="manageEditOptions">
+                    Edit options
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           <p id="pollDescription" class="poll-description"></p>

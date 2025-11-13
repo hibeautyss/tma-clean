@@ -25,6 +25,7 @@ import {
   setVoteNameValue,
   toggleNameModal,
   setContinueButtonEnabled,
+  setManageMenuVisibility,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -345,6 +346,7 @@ const renderPollDetail = () => {
   const draft = getState().voteDraft ?? {};
   const readOnly = Boolean(getState().hasSubmittedVote);
   const canManage = Boolean(getState().canManageActivePoll);
+  const manageMenuOpen = Boolean(getState().manageMenuOpen && canManage);
   const hasSelections = hasPositiveSelection(draft);
   renderPollSummary(
     {
@@ -354,6 +356,7 @@ const renderPollDetail = () => {
     },
     participants.length
   );
+  setManageMenuVisibility(manageMenuOpen);
   renderPollGrid({
     options: poll.poll_options,
     participants,
@@ -367,6 +370,32 @@ const renderPollDetail = () => {
   renderCommentList(comments);
   setVoteCommentValue(getState().voteComment ?? "");
   setContinueButtonEnabled(!readOnly && hasSelections);
+};
+
+const setManageMenuState = (open) => {
+  const canManage = Boolean(getState().canManageActivePoll);
+  const nextOpen = open && canManage;
+  updateState({ manageMenuOpen: nextOpen });
+  setManageMenuVisibility(nextOpen);
+};
+
+const closeManageMenu = () => setManageMenuState(false);
+
+const handleActivePollManage = () => {
+  if (!getState().canManageActivePoll) return;
+  setManageMenuState(!getState().manageMenuOpen);
+};
+
+const handleManageEditDetails = () => {
+  if (!getState().canManageActivePoll) return;
+  closeManageMenu();
+  console.debug("Edit details action selected.");
+};
+
+const handleManageEditOptions = () => {
+  if (!getState().canManageActivePoll) return;
+  closeManageMenu();
+  console.debug("Edit options action selected.");
 };
 
 const applyPollDetail = (pollData, relation = "joined") => {
@@ -389,6 +418,7 @@ const applyPollDetail = (pollData, relation = "joined") => {
     hasSubmittedVote: alreadySubmitted,
     activePollRelation: derivedRelation,
     canManageActivePoll: canManage,
+    manageMenuOpen: false,
   });
   setVoteCommentValue("");
   if (alreadySubmitted) {
@@ -699,20 +729,6 @@ const handleContinueVote = () => {
   openNameModal();
 };
 
-const handleActivePollManage = () => {
-  if (!getState().canManageActivePoll) return;
-  const poll = getState().activePoll;
-  if (!poll) return;
-  openPollFromHistory(
-    {
-      id: poll.id,
-      share_code: poll.share_code,
-      relation: "created",
-    },
-    "created"
-  );
-};
-
 const refreshActivePoll = async () => {
   const poll = getState().activePoll;
   if (!poll?.id) return;
@@ -729,12 +745,14 @@ const refreshActivePoll = async () => {
         ? "created"
         : "joined";
     const canManage = derivedRelation === "created";
+    const previousMenuState = Boolean(getState().manageMenuOpen);
     updateState({
       activePoll: { ...normalized, relation: derivedRelation },
       activePollVotes: mapVotesToParticipants(latest.votes ?? []),
       hasSubmittedVote: alreadySubmitted,
       activePollRelation: derivedRelation,
       canManageActivePoll: canManage,
+      manageMenuOpen: canManage ? previousMenuState : false,
     });
     if (alreadySubmitted && !previouslyLocked) {
       setVoteFeedbackMessage("You already submitted your availability for this poll.", "success");
@@ -896,20 +914,32 @@ const handleCreatePoll = async () => {
 };
 
 const handleDocumentClick = (event) => {
-  if (!isTimezonePopoverVisible()) return;
-  if (
-    refs.timezonePopover.contains(event.target) ||
-    refs.timezoneButton.contains(event.target) ||
-    refs.pollTimezoneButton?.contains(event.target)
-  ) {
-    return;
+  if (isTimezonePopoverVisible()) {
+    const interactedWithTimezone =
+      refs.timezonePopover.contains(event.target) ||
+      refs.timezoneButton.contains(event.target) ||
+      refs.pollTimezoneButton?.contains(event.target);
+    if (!interactedWithTimezone) {
+      setTimezonePopoverVisible(false);
+    }
   }
-  setTimezonePopoverVisible(false);
+
+  if (getState().manageMenuOpen) {
+    const interactedWithManage =
+      refs.manageMenu?.contains(event.target) || refs.pollManageButton?.contains(event.target);
+    if (!interactedWithManage) {
+      closeManageMenu();
+    }
+  }
 };
 
 const handleDocumentKeydown = (event) => {
-  if (event.key === "Escape" && isTimezonePopoverVisible()) {
+  if (event.key !== "Escape") return;
+  if (isTimezonePopoverVisible()) {
     setTimezonePopoverVisible(false);
+  }
+  if (getState().manageMenuOpen) {
+    closeManageMenu();
   }
 };
 
@@ -940,6 +970,8 @@ const attachEventHandlers = () => {
   refs.resetVoteButton?.addEventListener("click", handleResetVote);
   refs.continueVoteButton?.addEventListener("click", handleContinueVote);
   refs.backToDashboardFromPoll?.addEventListener("click", handleBackToDashboardFromPoll);
+  refs.manageEditDetails?.addEventListener("click", handleManageEditDetails);
+  refs.manageEditOptions?.addEventListener("click", handleManageEditOptions);
   refs.modalBackButton?.addEventListener("click", closeNameModal);
   refs.closeNameModal?.addEventListener("click", closeNameModal);
   refs.submitVoteButton?.addEventListener("click", handleSubmitVote);

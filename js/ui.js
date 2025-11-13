@@ -73,6 +73,9 @@ export const initUI = () => {
   refs.pollDescription = document.getElementById("pollDescription");
   refs.pollStatusBadge = document.getElementById("pollStatusBadge");
   refs.pollManageButton = document.getElementById("pollManageButton");
+  refs.manageMenu = document.getElementById("manageMenu");
+  refs.manageEditDetails = document.getElementById("manageEditDetails");
+  refs.manageEditOptions = document.getElementById("manageEditOptions");
   refs.pollOptionCount = document.getElementById("pollOptionCount");
   refs.participantCount = document.getElementById("participantCount");
   refs.pollGrid = document.getElementById("pollGrid");
@@ -394,6 +397,14 @@ export const setContinueButtonEnabled = (enabled) => {
   refs.continueVoteButton.classList.toggle("active", enabled);
 };
 
+export const setManageMenuVisibility = (visible) => {
+  if (!refs.manageMenu) return;
+  refs.manageMenu.hidden = !visible;
+  if (refs.pollManageButton) {
+    refs.pollManageButton.setAttribute("aria-expanded", visible ? "true" : "false");
+  }
+};
+
 export const renderPollSummary = (poll = {}, participantCount = 0) => {
   if (refs.pollTitle) refs.pollTitle.textContent = poll.title ?? "Untitled poll";
   if (refs.pollDescription) {
@@ -406,6 +417,14 @@ export const renderPollSummary = (poll = {}, participantCount = 0) => {
   }
   if (refs.pollStatusBadge) {
     refs.pollStatusBadge.textContent = poll.status ?? "Live";
+  }
+  if (refs.pollManageButton) {
+    const canManage = Boolean(poll.canManage);
+    refs.pollManageButton.hidden = !canManage;
+    refs.pollManageButton.disabled = !canManage;
+    if (!canManage) {
+      refs.pollManageButton.setAttribute("aria-expanded", "false");
+    }
   }
   if (refs.pollManageButton) {
     const canManage = Boolean(poll.canManage);
