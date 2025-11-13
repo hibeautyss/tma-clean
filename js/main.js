@@ -1,5 +1,5 @@
 import { initTelegram, getTelegramUser } from "./telegram.js";
-import { loadUserState, saveUserState } from "./api.js";
+import { loadUserState, saveUserState, createRemotePoll } from "./api.js";
 import { getState, updateState } from "./state.js";
 import {
   initUI,
@@ -11,6 +11,7 @@ import {
   renderTimezoneList,
   setTimezoneSearchValue,
   setCreatePollEnabled,
+  setFormFeedback,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -57,6 +58,8 @@ const TIMEZONE_CATALOG = [
 
 let refs = {};
 let saveTimer = null;
+const CREATE_LABEL_DEFAULT = "Create Poll";
+const CREATE_LABEL_WORKING = "Saving...";
 
 const getStorageId = () => getState().telegramUser?.id ?? "guest";
 
@@ -157,7 +160,7 @@ const renderAll = () => {
   setTimezoneLabel(state.timezone);
   const matches = filterTimezones(state.timezoneSearch || "");
   renderTimezoneList(matches, handleTimezoneSelect);
-  setCreatePollEnabled(state.selectedDates.size > 0);
+  setCreatePollEnabled(state.selectedDates.size > 0 && !state.isSubmitting);
 };
 
 const handleDateToggle = (iso) => {
@@ -268,8 +271,69 @@ const handleTimezoneSelect = (zone) => {
   schedulePersist();
 };
 
-const handleCreatePoll = () => {
-  console.info("Create Poll clicked", getState());
+const getEventDetails = () => ({
+  title: refs.titleInput?.value ?? "",
+  location: refs.locationInput?.value ?? "",
+  description: refs.descriptionInput?.value ?? "",
+});
+
+const setSubmitting = (isSubmitting) => {
+  updateState({ isSubmitting });
+  renderAll();
+  if (refs.createPollButton) {
+    refs.createPollButton.textContent = isSubmitting ? CREATE_LABEL_WORKING : CREATE_LABEL_DEFAULT;
+  }
+};
+
+const resetPlannerState = () => {
+  updateState({
+    selectedDates: new Map(),
+    specifyTimesEnabled: false,
+  });
+  if (refs.timeToggle) {
+    refs.timeToggle.checked = false;
+  }
+  renderAll();
+  persistState();
+};
+
+const handleCreatePoll = async () => {
+  if (getState().isSubmitting) return;
+  const { title, location, description } = getEventDetails();
+  const state = getState();
+  if (!title.trim()) {
+    setFormFeedback("Title is required before creating a poll.", "error");
+    refs.titleInput?.focus();
+    return;
+  }
+  if (!state.selectedDates.size) {
+    setFormFeedback("Select at least one date first.", "error");
+    return;
+  }
+
+  setFormFeedback("Saving poll to Supabase...", "info");
+  setSubmitting(true);
+  try {
+    const poll = await createRemotePoll({
+      title,
+      location,
+      description,
+      timezone: state.timezone,
+      specifyTimesEnabled: state.specifyTimesEnabled,
+      selectedDates: new Map(state.selectedDates),
+      telegramUser: state.telegramUser,
+    });
+    setFormFeedback(
+      `Poll created! Share code ${poll.share_code} with participants.`,
+      "success"
+    );
+    resetPlannerState();
+  } catch (error) {
+    console.error("Failed to create poll", error);
+    setFormFeedback(error.message ?? "Unable to create poll. Please try again.", "error");
+  } finally {
+    setSubmitting(false);
+  }
 };
 
 const handleDocumentClick = (event) => {
@@ -327,8 +391,12 @@ const persistState = () => {
 const bootstrap = async () => {
   initTelegram();
   refs = initUI();
+  if (refs.createPollButton) {
+    refs.createPollButton.textContent = CREATE_LABEL_DEFAULT;
+  }
   await hydrateState();
   attachEventHandlers();
+  setFormFeedback("");
   renderAll();
 };
 

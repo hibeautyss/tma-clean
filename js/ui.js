@@ -22,6 +22,9 @@ const formatDuration = (minutes) => {
 };
 
 export const initUI = () => {
+  refs.titleInput = document.getElementById("title");
+  refs.locationInput = document.getElementById("location");
+  refs.descriptionInput = document.getElementById("description");
   refs.calendarGrid = document.getElementById("calendarGrid");
   refs.monthLabel = document.getElementById("monthLabel");
   refs.navButtons = document.querySelectorAll("[data-direction]");
@@ -37,6 +40,7 @@ export const initUI = () => {
   refs.timezoneEmpty = document.getElementById("timezoneEmpty");
   refs.timezoneClose = document.getElementById("timezoneClose");
   refs.createPollButton = document.getElementById("createPollButton");
+  refs.formFeedback = document.getElementById("formFeedback");
   return refs;
 };
 
@@ -226,4 +230,13 @@ export const setCreatePollEnabled = (enabled) => {
   if (!refs.createPollButton) return;
   refs.createPollButton.disabled = !enabled;
   refs.createPollButton.classList.toggle("active", enabled);
+};
+
+export const setFormFeedback = (message = "", tone = "info") => {
+  if (!refs.formFeedback) return;
+  const content = message ?? "";
+  refs.formFeedback.textContent = content;
+  refs.formFeedback.hidden = !content;
+  refs.formFeedback.classList.toggle("is-error", tone === "error");
+  refs.formFeedback.classList.toggle("is-success", tone === "success");
 };

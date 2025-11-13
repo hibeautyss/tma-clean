@@ -4,6 +4,7 @@ const state = {
   telegramUser: null,
   selectedDates: new Map(),
   specifyTimesEnabled: false,
+  isSubmitting: false,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   timezoneSearch: "",
   today: initialToday,

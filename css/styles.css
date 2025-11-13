@@ -69,6 +69,22 @@
         gap: 20px;
       }
 
+      .form-feedback {
+        margin-top: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        min-height: 18px;
+      }
+
+      .form-feedback.is-error {
+        color: #b42318;
+      }
+
+      .form-feedback.is-success {
+        color: #027a48;
+      }
+
       .field label {
         display: block;
         font-size: 14px;
