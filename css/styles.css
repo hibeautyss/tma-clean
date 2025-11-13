@@ -826,7 +826,7 @@ textarea {
   gap: 6px;
   font-size: 13px;
   color: var(--text-secondary);
-  margin-top: 12px;
+  margin-top: 0px;
 }
 
 .timezone-inline .globe {
@@ -966,7 +966,7 @@ textarea {
 .vote-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0px;
   flex-wrap: wrap;
 }
 
