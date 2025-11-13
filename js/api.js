@@ -212,6 +212,31 @@ export const createRemotePoll = async ({
   };
 };
 
+export const updatePollDetails = async ({ pollId, title, location, description }) => {
+  if (!pollId) {
+    throw new Error("pollId is required.");
+  }
+  const normalizedTitle = typeof title === "string" ? title.trim() : "";
+  if (!normalizedTitle) {
+    throw new Error("Title is required.");
+  }
+  const payload = {
+    title: normalizedTitle,
+    location: safeTrim(location),
+    description: safeTrim(description),
+  };
+  const rows = await supabaseRequest(buildRestPath("/polls", { id: `eq.${pollId}` }), {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(payload),
+  });
+  const updated = Array.isArray(rows) ? rows[0] : rows;
+  if (!updated) {
+    throw new Error("Poll update failed.");
+  }
+  return updated;
+};
+
 export const fetchPoll = async ({ pollId, shareCode }) => {
   const params = {
     select:

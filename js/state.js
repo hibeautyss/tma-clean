@@ -5,6 +5,7 @@ const state = {
   selectedDates: new Map(),
   specifyTimesEnabled: false,
   isSubmitting: false,
+  isUpdatingPoll: false,
   timezone: "Europe/Moscow",
   timezoneSearch: "",
   today: initialToday,

@@ -1,5 +1,12 @@
 import { initTelegram, getTelegramUser } from "./telegram.js";
-import { loadUserState, saveUserState, createRemotePoll, fetchPollDetail, submitVote } from "./api.js";
+import {
+  loadUserState,
+  saveUserState,
+  createRemotePoll,
+  fetchPollDetail,
+  submitVote,
+  updatePollDetails,
+} from "./api.js";
 import { getState, updateState } from "./state.js";
 import {
   initUI,
@@ -26,6 +33,10 @@ import {
   toggleNameModal,
   setContinueButtonEnabled,
   setManageMenuVisibility,
+  setEditDetailsValues,
+  setEditDetailsFeedback,
+  setEditDetailsSaving,
+  toggleEditDetailsModal,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -239,6 +250,28 @@ const recordPollHistoryEntry = (poll, relation) => {
   schedulePersist();
 };
 
+const updatePollHistoryDetails = (poll) => {
+  if (!poll?.id) return;
+  const history = getPollHistory();
+  if (!history.length) return;
+  let changed = false;
+  const patched = history.map((entry) => {
+    if (entry.id !== poll.id) {
+      return entry;
+    }
+    const nextTitle = poll.title ?? entry.title;
+    if (entry.title === nextTitle) {
+      return entry;
+    }
+    changed = true;
+    return { ...entry, title: nextTitle };
+  });
+  if (!changed) return;
+  updateState({ pollHistory: patched });
+  renderPollSection();
+  schedulePersist();
+};
+
 const syncScreenVisibility = (screen) => {
   let normalized = SCREENS.DASHBOARD;
   if (screen === SCREENS.CREATE) {
@@ -386,10 +419,87 @@ const handleActivePollManage = () => {
   setManageMenuState(!getState().manageMenuOpen);
 };
 
+const isEditDetailsModalOpen = () =>
+  Boolean(refs.editDetailsModal && !refs.editDetailsModal.hidden);
+
+const openEditDetailsModal = () => {
+  const poll = getState().activePoll;
+  if (!poll) return;
+  setEditDetailsValues({
+    title: poll.title ?? "",
+    location: poll.location ?? "",
+    description: poll.description ?? "",
+  });
+  setEditDetailsFeedback("");
+  setEditDetailsSaving(false);
+  toggleEditDetailsModal(true);
+  setTimeout(() => refs.editTitleInput?.focus(), 0);
+};
+
+const closeEditDetailsModal = () => {
+  toggleEditDetailsModal(false);
+  setEditDetailsSaving(false);
+  setEditDetailsFeedback("");
+};
+
+const applyUpdatedPollDetails = (updated) => {
+  const current = getState().activePoll;
+  if (!current) return;
+  const next = {
+    ...current,
+    title: updated.title ?? current.title,
+    location: updated.location ?? null,
+    description: updated.description ?? null,
+  };
+  updateState({ activePoll: next });
+  updatePollHistoryDetails(next);
+  renderPollDetail();
+};
+
+const handleEditDetailsSubmit = async (event) => {
+  event?.preventDefault?.();
+  if (getState().isUpdatingPoll) return;
+  const poll = getState().activePoll;
+  if (!poll?.id) return;
+  const title = refs.editTitleInput?.value ?? "";
+  if (!title.trim()) {
+    setEditDetailsFeedback("Title is required.", "error");
+    refs.editTitleInput?.focus();
+    return;
+  }
+  const location = refs.editLocationInput?.value ?? "";
+  const description = refs.editDescriptionInput?.value ?? "";
+  updateState({ isUpdatingPoll: true });
+  setEditDetailsSaving(true);
+  setEditDetailsFeedback("Saving changes...", "info");
+  try {
+    const updated = await updatePollDetails({
+      pollId: poll.id,
+      title,
+      location,
+      description,
+    });
+    applyUpdatedPollDetails(updated);
+    closeEditDetailsModal();
+  } catch (error) {
+    console.error("Failed to update poll details", error);
+    setEditDetailsFeedback(error.message ?? "Unable to save changes. Try again.", "error");
+  } finally {
+    updateState({ isUpdatingPoll: false });
+    setEditDetailsSaving(false);
+  }
+};
+
+const handleCancelEditDetails = (event) => {
+  event?.preventDefault?.();
+  if (getState().isUpdatingPoll) return;
+  closeEditDetailsModal();
+};
+
 const handleManageEditDetails = () => {
   if (!getState().canManageActivePoll) return;
   closeManageMenu();
-  console.debug("Edit details action selected.");
+  openEditDetailsModal();
 };
 
 const handleManageEditOptions = () => {
@@ -941,6 +1051,9 @@ const handleDocumentKeydown = (event) => {
   if (getState().manageMenuOpen) {
     closeManageMenu();
   }
+  if (!getState().isUpdatingPoll && isEditDetailsModalOpen()) {
+    closeEditDetailsModal();
+  }
 };
 
 const attachEventHandlers = () => {
@@ -976,10 +1089,14 @@ const attachEventHandlers = () => {
   refs.closeNameModal?.addEventListener("click", closeNameModal);
   refs.submitVoteButton?.addEventListener("click", handleSubmitVote);
   refs.voteNameInput?.addEventListener("input", (event) => handleNameInputChange(event.target.value));
+  refs.editDetailsForm?.addEventListener("submit", handleEditDetailsSubmit);
+  refs.cancelEditDetailsButton?.addEventListener("click", handleCancelEditDetails);
+  refs.closeEditDetailsModal?.addEventListener("click", handleCancelEditDetails);
   wirePressAnimation(refs.createPollButton);
   wirePressAnimation(refs.joinPollButton);
   wirePressAnimation(refs.continueVoteButton);
   wirePressAnimation(refs.submitVoteButton);
+  wirePressAnimation(refs.saveEditDetailsButton);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };

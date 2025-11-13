@@ -55,7 +55,7 @@ create table if not exists public.vote_selections (
 
 -- Permissions --------------------------------------------------------------
 grant usage on schema public to anon, authenticated;
-grant select, insert on public.polls to anon, authenticated;
+grant select, insert, update on public.polls to anon, authenticated;
 grant select, insert on public.poll_options to anon, authenticated;
 grant select, insert on public.votes to anon, authenticated;
 grant select, insert on public.vote_selections to anon, authenticated;
@@ -73,6 +73,11 @@ create policy "anon_select_polls" on public.polls
 drop policy if exists "anon_insert_polls" on public.polls;
 create policy "anon_insert_polls" on public.polls
     for insert with check (true);
+
+drop policy if exists "anon_update_polls" on public.polls;
+create policy "anon_update_polls" on public.polls
+    for update using (true)
+    with check (true);
 
 drop policy if exists "anon_select_poll_options" on public.poll_options;
 create policy "anon_select_poll_options" on public.poll_options

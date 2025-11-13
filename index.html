@@ -306,6 +306,33 @@
       </div>
     </div>
 
+    <div id="editDetailsModal" class="modal-shell" hidden aria-modal="true" role="dialog">
+      <form class="modal-card wide" id="editDetailsForm">
+        <div class="modal-header">
+          <h3>Edit poll details</h3>
+          <button type="button" class="icon-btn" id="closeEditDetailsModal" aria-label="Close">&times;</button>
+        </div>
+        <p class="modal-subtitle">Update the title, place, or description for everyone viewing this poll.</p>
+        <label class="field">
+          <span>Title</span>
+          <input id="editTitleInput" type="text" placeholder="Monthly Meetup" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Location <span class="hint">(Optional)</span></span>
+          <input id="editLocationInput" type="text" placeholder="Joe's Coffee Shop" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Description <span class="hint">(Optional)</span></span>
+          <textarea id="editDescriptionInput" placeholder="Share more context for the group."></textarea>
+        </label>
+        <div class="form-feedback" id="editDetailsFeedback" role="status" aria-live="polite"></div>
+        <div class="modal-actions">
+          <button type="button" class="ghost-btn" id="cancelEditDetailsButton">Cancel</button>
+          <button type="submit" class="primary-btn" id="saveEditDetailsButton">Save changes</button>
+        </div>
+      </form>
+    </div>
+
     <script type="module" src="./js/main.js"></script>
   </body>
 </html>

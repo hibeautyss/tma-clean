@@ -1,4 +1,8 @@
 const refs = {};
+const EDIT_DETAILS_LABELS = {
+  idle: "Save changes",
+  saving: "Saving...",
+};
 
 const formatDisplayDate = (date, options) =>
   new Intl.DateTimeFormat("en-US", options).format(date);
@@ -91,6 +95,15 @@ export const initUI = () => {
   refs.modalBackButton = document.getElementById("modalBackButton");
   refs.closeNameModal = document.getElementById("closeNameModal");
   refs.submitVoteButton = document.getElementById("submitVoteButton");
+  refs.editDetailsModal = document.getElementById("editDetailsModal");
+  refs.editDetailsForm = document.getElementById("editDetailsForm");
+  refs.editTitleInput = document.getElementById("editTitleInput");
+  refs.editLocationInput = document.getElementById("editLocationInput");
+  refs.editDescriptionInput = document.getElementById("editDescriptionInput");
+  refs.saveEditDetailsButton = document.getElementById("saveEditDetailsButton");
+  refs.cancelEditDetailsButton = document.getElementById("cancelEditDetailsButton");
+  refs.closeEditDetailsModal = document.getElementById("closeEditDetailsModal");
+  refs.editDetailsFeedback = document.getElementById("editDetailsFeedback");
   return refs;
 };
 
@@ -568,5 +581,48 @@ export const toggleNameModal = (open) => {
   }
   if (refs.nameModal) {
     refs.nameModal.hidden = !open;
+  }
+};
+
+export const setEditDetailsValues = ({ title = "", location = "", description = "" } = {}) => {
+  if (refs.editTitleInput) {
+    refs.editTitleInput.value = title ?? "";
+  }
+  if (refs.editLocationInput) {
+    refs.editLocationInput.value = location ?? "";
+  }
+  if (refs.editDescriptionInput) {
+    refs.editDescriptionInput.value = description ?? "";
+  }
+};
+
+export const setEditDetailsFeedback = (message = "", tone = "info") => {
+  if (!refs.editDetailsFeedback) return;
+  refs.editDetailsFeedback.textContent = message ?? "";
+  refs.editDetailsFeedback.classList.toggle("is-error", tone === "error");
+  refs.editDetailsFeedback.classList.toggle("is-success", tone === "success");
+};
+
+export const setEditDetailsSaving = (saving) => {
+  if (refs.saveEditDetailsButton) {
+    refs.saveEditDetailsButton.disabled = saving;
+    refs.saveEditDetailsButton.textContent = saving
+      ? EDIT_DETAILS_LABELS.saving
+      : EDIT_DETAILS_LABELS.idle;
+  }
+  if (refs.cancelEditDetailsButton) {
+    refs.cancelEditDetailsButton.disabled = saving;
+  }
+  if (refs.closeEditDetailsModal) {
+    refs.closeEditDetailsModal.disabled = saving;
+  }
+};
+
+export const toggleEditDetailsModal = (open) => {
+  if (refs.modalScrim) {
+    refs.modalScrim.hidden = !open;
+  }
+  if (refs.editDetailsModal) {
+    refs.editDetailsModal.hidden = !open;
   }
 };
