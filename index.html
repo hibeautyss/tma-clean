@@ -196,7 +196,6 @@
           <button type="button" class="ghost-btn" id="backToDashboardFromPoll" aria-label="Back to dashboard">
             <span aria-hidden="true">‹</span> Dashboard
           </button>
-          <span class="create-label">Poll</span>
         </div>
 
         <section class="panel poll-summary">
@@ -209,6 +208,26 @@
             <span class="status-pill" id="pollStatusBadge">Live</span>
           </div>
           <p id="pollDescription" class="poll-description"></p>
+        </section>
+
+        <section class="panel poll-participants">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Participants</p>
+              <h2 id="participantCount">0 participants</h2>
+              <div class="timezone-inline">
+                <svg class="globe" viewBox="0 0 20 20" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M10 1.25a8.75 8.75 0 1 0 0 17.5 8.75 8.75 0 0 0 0-17.5Zm6.99 8h-2.67c-.15-2.23-.9-4.27-2.02-5.77a7.28 7.28 0 0 1 4.69 5.77Zm-7.24-6.3v6.3H6.52c.16-2.05.87-4.01 1.94-5.54.42-.6.86-.68 1.29-.76Zm0 7.55v6.3c-.43-.08-.87-.17-1.29-.76a12 12 0 0 1-1.94-5.54Zm1.25 6.3v-6.3h3.53c-.16 2.05-.87 4.02-1.94 5.54-.42.6-.86.68-1.59.76Zm0-7.55V2.95c.73.08 1.17.16 1.59.76 1.07 1.52 1.78 3.5 1.94 5.54Zm-5.05-5.8c-1.12 1.5-1.87 3.54-2.02 5.77H2.26a7.28 7.28 0 0 1 4.69-5.77ZM2.26 10h2.67c.15 2.23.9 4.27 2.02 5.77a7.28 7.28 0 0 1-4.69-5.77Zm9.78 5.77c1.12-1.5 1.87-3.54 2.02-5.77h2.67a7.28 7.28 0 0 1-4.69 5.77Z"
+                  />
+                </svg>
+                <span id="pollTimezoneChip">Times shown in Etc/GMT-1</span>
+                <span id="pollOptionCount" class="options-count">0 options</span>
+              </div>
+            </div>
+          </div>
+
           <div class="poll-legends">
             <span class="legend legend-yes">
               <span></span>
@@ -223,33 +242,11 @@
               No
             </span>
           </div>
-        </section>
-
-        <section class="panel poll-participants">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Participants</p>
-              <h2 id="participantCount">0 people</h2>
-            </div>
-            <div class="options-meta">
-              <span id="pollOptionCount">0 options</span>
-              <span id="pollTimezoneChip" class="timezone-chip">–</span>
-            </div>
-          </div>
 
           <div class="poll-grid" id="pollGrid"></div>
-
-          <div class="poll-action-row">
-            <textarea
-              id="voteComment"
-              class="vote-comment"
-              placeholder="Leave a note for the organizer (optional)"
-            ></textarea>
-            <div class="vote-actions">
-              <div id="voteFeedback" class="form-feedback"></div>
-              <button type="button" class="ghost-btn" id="resetVoteButton">Reset</button>
-              <button type="button" class="primary-btn" id="continueVoteButton">Continue</button>
-            </div>
+          <div class="vote-actions">
+            <div id="voteFeedback" class="form-feedback"></div>
+            <button type="button" class="primary-btn" id="continueVoteButton">Continue</button>
           </div>
         </section>
 
@@ -257,9 +254,15 @@
           <div class="panel-header">
             <div>
               <p class="eyebrow">Comments</p>
-              <h2 id="commentCount">0</h2>
+              <h2>Share a note</h2>
             </div>
           </div>
+          <textarea
+            id="voteComment"
+            class="vote-comment"
+            placeholder="Leave a note for the organizer (optional)"
+          ></textarea>
+          <p id="commentsEmpty" class="comment-empty">No comments yet.</p>
           <ul id="commentList" class="comment-list"></ul>
         </section>
       </div>

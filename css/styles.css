@@ -781,7 +781,7 @@ textarea {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .legend {
@@ -820,13 +820,17 @@ textarea {
   text-align: right;
 }
 
-.timezone-chip {
-  display: inline-flex;
+.timezone-inline {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 12px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.timezone-inline .globe {
+  width: 16px;
+  height: 16px;
 }
 
 .poll-grid {
@@ -943,14 +947,15 @@ textarea {
 
 .vote-comment {
   width: 100%;
-  min-height: 80px;
+  min-height: 48px;
   background: var(--surface-alt);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 8px 12px;
   color: inherit;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
+  resize: vertical;
 }
 
 .vote-actions {
@@ -971,6 +976,12 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.comment-empty {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .comment-item {
@@ -1035,7 +1046,7 @@ textarea {
 }
 
 .modal-subtitle {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 14px;
   color: var(--text-secondary);
 }
@@ -1044,4 +1055,9 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+.modal-card .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }

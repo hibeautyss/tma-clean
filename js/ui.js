@@ -93,7 +93,7 @@ export const initUI = () => {
   refs.resetVoteButton = document.getElementById("resetVoteButton");
   refs.continueVoteButton = document.getElementById("continueVoteButton");
   refs.commentList = document.getElementById("commentList");
-  refs.commentCount = document.getElementById("commentCount");
+  refs.commentsEmpty = document.getElementById("commentsEmpty");
   refs.modalScrim = document.getElementById("modalScrim");
   refs.nameModal = document.getElementById("nameModal");
   refs.voteNameInput = document.getElementById("voteNameInput");
@@ -505,16 +505,10 @@ export const renderPollGrid = ({
 };
 
 export const renderCommentList = (comments = []) => {
-  if (!refs.commentList || !refs.commentCount) return;
-  refs.commentCount.textContent = comments.length;
+  if (!refs.commentList || !refs.commentsEmpty) return;
   refs.commentList.innerHTML = "";
-  if (!comments.length) {
-    const li = document.createElement("li");
-    li.className = "comment-item";
-    li.textContent = "No comments yet.";
-    refs.commentList.appendChild(li);
-    return;
-  }
+  refs.commentsEmpty.hidden = Boolean(comments.length);
+  if (!comments.length) return;
   comments.forEach((comment) => {
     const li = document.createElement("li");
     li.className = "comment-item";
