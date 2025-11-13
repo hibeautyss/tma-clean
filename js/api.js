@@ -237,6 +237,93 @@ export const updatePollDetails = async ({ pollId, title, location, description }
   return updated;
 };
 
+export const updatePollOptions = async ({
+  pollId,
+  specifyTimesEnabled = false,
+  options = [],
+  removedOptionIds = [],
+}) => {
+  if (!pollId) {
+    throw new Error("pollId is required.");
+  }
+  if (!Array.isArray(options) || !options.length) {
+    throw new Error("Provide at least one option to save.");
+  }
+
+  const normalizedOptions = options.map((option) => {
+    const optionDate = option.option_date ?? option.date;
+    if (!optionDate) {
+      throw new Error("Each option must include a date.");
+    }
+    const payload = {
+      id: option.id ?? null,
+      option_date: optionDate,
+      start_minute: null,
+      end_minute: null,
+    };
+    if (specifyTimesEnabled) {
+      const start = clampMinutes(option.start_minute ?? option.startMinute);
+      const end = clampMinutes(option.end_minute ?? option.endMinute);
+      if (start === null || end === null || end <= start) {
+        throw new Error("Each option must include a valid time range.");
+      }
+      payload.start_minute = start;
+      payload.end_minute = end;
+    }
+    return payload;
+  });
+
+  const sanitizedRemovals = (removedOptionIds ?? [])
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isInteger(value));
+
+  if (sanitizedRemovals.length) {
+    await supabaseRequest(
+      buildRestPath("/poll_options", { id: `in.(${sanitizedRemovals.join(",")})` }),
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
+  const updates = normalizedOptions.filter((option) => option.id);
+  const creations = normalizedOptions.filter((option) => !option.id);
+
+  await Promise.all(
+    updates.map((option) =>
+      supabaseRequest(buildRestPath("/poll_options", { id: `eq.${option.id}` }), {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          option_date: option.option_date,
+          start_minute: option.start_minute,
+          end_minute: option.end_minute,
+        }),
+      })
+    )
+  );
+
+  if (creations.length) {
+    const payload = creations.map((option) => ({
+      poll_id: pollId,
+      option_date: option.option_date,
+      start_minute: option.start_minute,
+      end_minute: option.end_minute,
+    }));
+    await supabaseRequest("/poll_options", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  await supabaseRequest(buildRestPath("/polls", { id: `eq.${pollId}` }), {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ specify_times: specifyTimesEnabled }),
+  });
+};
+
 export const fetchPoll = async ({ pollId, shareCode }) => {
   const params = {
     select:

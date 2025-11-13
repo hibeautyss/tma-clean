@@ -333,6 +333,40 @@
       </form>
     </div>
 
+    <div id="editOptionsModal" class="modal-shell" hidden aria-modal="true" role="dialog">
+      <form class="modal-card wide" id="editOptionsForm">
+        <div class="modal-header">
+          <h3>Edit poll options</h3>
+          <button type="button" class="icon-btn" id="closeEditOptionsModal" aria-label="Close">&times;</button>
+        </div>
+        <p class="modal-subtitle">
+          Update the dates or time slots participants can vote on. Changes apply to everyone viewing this poll.
+        </p>
+        <div class="option-toggle-row">
+          <div>
+            <p class="eyebrow">Time slots</p>
+            <p class="option-toggle-help">Include start and end times for each option.</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="editOptionsSpecifyToggle" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <p class="option-timezone-hint">
+          Times are shown in <strong id="editOptionsTimezoneLabel">Loading...</strong>
+        </p>
+        <div class="option-editor-list" id="editOptionsList">
+          <p class="option-editor-empty">No options yet.</p>
+        </div>
+        <button type="button" class="ghost-btn full-width" id="addEditOptionButton">+ Add another date</button>
+        <div class="form-feedback" id="editOptionsFeedback" role="status" aria-live="polite"></div>
+        <div class="modal-actions">
+          <button type="button" class="ghost-btn" id="cancelEditOptionsButton">Cancel</button>
+          <button type="submit" class="primary-btn" id="saveEditOptionsButton">Save changes</button>
+        </div>
+      </form>
+    </div>
+
     <script type="module" src="./js/main.js"></script>
   </body>
 </html>

@@ -27,6 +27,13 @@ const state = {
   nameModalOpen: false,
   hasSubmittedVote: false,
   manageMenuOpen: false,
+  editOptionsModalOpen: false,
+  isUpdatingOptions: false,
+  editOptionsDraft: {
+    specifyTimesEnabled: false,
+    options: [],
+    baselineOptionIds: [],
+  },
 };
 
 const mapKeys = new Set(["selectedDates"]);

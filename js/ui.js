@@ -104,6 +104,16 @@ export const initUI = () => {
   refs.cancelEditDetailsButton = document.getElementById("cancelEditDetailsButton");
   refs.closeEditDetailsModal = document.getElementById("closeEditDetailsModal");
   refs.editDetailsFeedback = document.getElementById("editDetailsFeedback");
+  refs.editOptionsModal = document.getElementById("editOptionsModal");
+  refs.editOptionsForm = document.getElementById("editOptionsForm");
+  refs.editOptionsList = document.getElementById("editOptionsList");
+  refs.editOptionsFeedback = document.getElementById("editOptionsFeedback");
+  refs.cancelEditOptionsButton = document.getElementById("cancelEditOptionsButton");
+  refs.saveEditOptionsButton = document.getElementById("saveEditOptionsButton");
+  refs.closeEditOptionsModal = document.getElementById("closeEditOptionsModal");
+  refs.addEditOptionButton = document.getElementById("addEditOptionButton");
+  refs.editOptionsSpecifyToggle = document.getElementById("editOptionsSpecifyToggle");
+  refs.editOptionsTimezoneLabel = document.getElementById("editOptionsTimezoneLabel");
   return refs;
 };
 
@@ -624,5 +634,168 @@ export const toggleEditDetailsModal = (open) => {
   }
   if (refs.editDetailsModal) {
     refs.editDetailsModal.hidden = !open;
+  }
+};
+
+export const setEditOptionsTimezoneLabel = (label) => {
+  if (refs.editOptionsTimezoneLabel) {
+    refs.editOptionsTimezoneLabel.textContent = label ?? "";
+  }
+};
+
+export const setEditOptionsSpecifyToggle = (checked) => {
+  if (refs.editOptionsSpecifyToggle) {
+    refs.editOptionsSpecifyToggle.checked = Boolean(checked);
+  }
+};
+
+const buildTimePoints = (minutesInDay, timeStep) => {
+  const points = [];
+  for (let mark = 0; mark <= minutesInDay; mark += timeStep) {
+    points.push(mark);
+  }
+  return points;
+};
+
+const getOptionKey = (option, index) => option?.key ?? option?.id ?? `option-${index}`;
+
+const buildSelect = (values = [], selected, disabled, onChange) => {
+  const select = document.createElement("select");
+  select.className = "time-select";
+  values.forEach((point) => {
+    const option = document.createElement("option");
+    option.value = point;
+    option.textContent = formatTime(point);
+    select.appendChild(option);
+  });
+  select.value = `${selected}`;
+  select.disabled = disabled;
+  select.addEventListener("change", () => onChange?.(Number(select.value)));
+  return select;
+};
+
+export const renderEditOptionsList = (editor = {}, handlers = {}, timeConfig = {}) => {
+  if (!refs.editOptionsList) return;
+  const { options = [], specifyTimesEnabled = false } = editor ?? {};
+  refs.editOptionsList.innerHTML = "";
+  if (!options.length) {
+    const empty = document.createElement("p");
+    empty.className = "option-editor-empty";
+    empty.textContent = "No options yet.";
+    refs.editOptionsList.appendChild(empty);
+    return;
+  }
+
+  const minutesInDay = timeConfig.minutesInDay ?? 24 * 60;
+  const timeStep = timeConfig.timeStep ?? 15;
+  const defaultStart = timeConfig.defaultSlot?.start ?? Math.floor((minutesInDay / 2));
+  const defaultEnd = timeConfig.defaultSlot?.end ?? defaultStart + timeStep;
+  const timePoints = buildTimePoints(minutesInDay, timeStep);
+
+  options.forEach((option, index) => {
+    const key = getOptionKey(option, index);
+    const row = document.createElement("div");
+    row.className = "option-editor-row";
+    row.dataset.optionKey = key;
+
+    const dateField = document.createElement("label");
+    dateField.className = "field option-editor-field";
+    const dateLabel = document.createElement("span");
+    dateLabel.textContent = "Date";
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.value = option?.date ?? "";
+    dateInput.addEventListener("change", () => handlers.onDateChange?.(key, dateInput.value));
+    dateField.appendChild(dateLabel);
+    dateField.appendChild(dateInput);
+
+    const timesWrap = document.createElement("div");
+    timesWrap.className = "option-editor-times";
+
+    const startWrapper = document.createElement("label");
+    startWrapper.className = "field option-editor-field";
+    const startLabel = document.createElement("span");
+    startLabel.textContent = "Start";
+    const safeStart = Number.isFinite(option?.startMinute)
+      ? Math.max(0, Math.min(option.startMinute, minutesInDay - timeStep))
+      : Math.max(0, Math.min(defaultStart, minutesInDay - timeStep));
+    const startSelect = buildSelect(
+      timePoints.slice(0, -1),
+      safeStart,
+      !specifyTimesEnabled,
+      (value) => handlers.onStartChange?.(key, value)
+    );
+    startSelect.dataset.role = "start";
+    startSelect.dataset.optionKey = key;
+    startWrapper.appendChild(startLabel);
+    startWrapper.appendChild(startSelect);
+
+    const endWrapper = document.createElement("label");
+    endWrapper.className = "field option-editor-field";
+    const endLabel = document.createElement("span");
+    endLabel.textContent = "End";
+    const safeEnd = Number.isFinite(option?.endMinute)
+      ? Math.max(timeStep, Math.min(option.endMinute, minutesInDay))
+      : Math.max(timeStep, Math.min(defaultEnd, minutesInDay));
+    const endSelect = buildSelect(
+      timePoints,
+      safeEnd,
+      !specifyTimesEnabled,
+      (value) => handlers.onEndChange?.(key, value)
+    );
+    endSelect.dataset.role = "end";
+    endSelect.dataset.optionKey = key;
+    endWrapper.appendChild(endLabel);
+    endWrapper.appendChild(endSelect);
+
+    timesWrap.appendChild(startWrapper);
+    timesWrap.appendChild(endWrapper);
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "option-editor-remove";
+    removeButton.setAttribute("aria-label", "Remove option");
+    removeButton.textContent = "\u00D7";
+    removeButton.disabled = Boolean(editor?.isLocked);
+    removeButton.addEventListener("click", () => handlers.onRemove?.(key));
+
+    row.appendChild(dateField);
+    row.appendChild(timesWrap);
+    row.appendChild(removeButton);
+    refs.editOptionsList.appendChild(row);
+  });
+};
+
+export const setEditOptionsFeedback = (message = "", tone = "info") => {
+  if (!refs.editOptionsFeedback) return;
+  refs.editOptionsFeedback.textContent = message ?? "";
+  refs.editOptionsFeedback.classList.toggle("is-error", tone === "error");
+  refs.editOptionsFeedback.classList.toggle("is-success", tone === "success");
+};
+
+export const setEditOptionsSaving = (saving) => {
+  if (refs.saveEditOptionsButton) {
+    refs.saveEditOptionsButton.disabled = saving;
+  }
+  if (refs.cancelEditOptionsButton) {
+    refs.cancelEditOptionsButton.disabled = saving;
+  }
+  if (refs.closeEditOptionsModal) {
+    refs.closeEditOptionsModal.disabled = saving;
+  }
+  if (refs.addEditOptionButton) {
+    refs.addEditOptionButton.disabled = saving;
+  }
+  if (refs.editOptionsSpecifyToggle) {
+    refs.editOptionsSpecifyToggle.disabled = saving;
+  }
+};
+
+export const toggleEditOptionsModal = (open) => {
+  if (refs.modalScrim) {
+    refs.modalScrim.hidden = !open;
+  }
+  if (refs.editOptionsModal) {
+    refs.editOptionsModal.hidden = !open;
   }
 };

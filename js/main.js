@@ -6,6 +6,7 @@ import {
   fetchPollDetail,
   submitVote,
   updatePollDetails,
+  updatePollOptions,
 } from "./api.js";
 import { getState, updateState } from "./state.js";
 import {
@@ -37,6 +38,12 @@ import {
   setEditDetailsFeedback,
   setEditDetailsSaving,
   toggleEditDetailsModal,
+  renderEditOptionsList,
+  setEditOptionsSpecifyToggle,
+  setEditOptionsFeedback,
+  setEditOptionsSaving,
+  toggleEditOptionsModal,
+  setEditOptionsTimezoneLabel,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -71,6 +78,7 @@ const SCREENS = {
 
 let refs = {};
 let saveTimer = null;
+let editOptionKeySeed = 0;
 const CREATE_LABEL_DEFAULT = "Create Poll";
 const CREATE_LABEL_WORKING = "Saving...";
 
@@ -442,6 +450,151 @@ const closeEditDetailsModal = () => {
   setEditDetailsFeedback("");
 };
 
+const getEmptyEditOptionsDraft = () => ({
+  specifyTimesEnabled: false,
+  options: [],
+  baselineOptionIds: [],
+});
+
+const ensureEditOptionsDraft = () => {
+  const draft = getState().editOptionsDraft;
+  if (draft && Array.isArray(draft.options)) {
+    return draft;
+  }
+  const fallback = getEmptyEditOptionsDraft();
+  updateState({ editOptionsDraft: fallback });
+  return fallback;
+};
+
+const generateOptionKey = (source = "local") => {
+  editOptionKeySeed += 1;
+  return `${source}-${Date.now()}-${editOptionKeySeed}`;
+};
+
+const buildEditOptionsDraftFromPoll = (poll) => {
+  if (!poll) {
+    return getEmptyEditOptionsDraft();
+  }
+  const specifyTimesEnabled = Boolean(poll.specify_times);
+  const options = (poll.poll_options ?? []).map((option) => ({
+    id: option.id,
+    key: generateOptionKey("poll"),
+    date: option.option_date ?? "",
+    startMinute:
+      option.start_minute ?? (specifyTimesEnabled ? TIME_CONFIG.defaultSlot.start : null),
+    endMinute:
+      option.end_minute ?? (specifyTimesEnabled ? TIME_CONFIG.defaultSlot.end : null),
+  }));
+  if (!options.length) {
+    options.push({
+      key: generateOptionKey("poll"),
+      date: toLocalISO(getState().today ?? new Date()),
+      startMinute: TIME_CONFIG.defaultSlot.start,
+      endMinute: TIME_CONFIG.defaultSlot.end,
+    });
+  }
+  return {
+    specifyTimesEnabled,
+    options,
+    baselineOptionIds: options.map((entry) => entry.id).filter(Boolean),
+  };
+};
+
+const setEditOptionsModalState = (open) => {
+  updateState({ editOptionsModalOpen: open });
+  toggleEditOptionsModal(open);
+};
+
+const isEditOptionsModalOpen = () =>
+  Boolean(refs.editOptionsModal && !refs.editOptionsModal.hidden);
+
+const updateOptionControlValue = (key, role, value) => {
+  const control = refs.editOptionsList?.querySelector(
+    `[data-option-key="${key}"] select[data-role="${role}"]`
+  );
+  if (control) {
+    control.value = `${value}`;
+  }
+};
+
+const clampEditorMinute = (value, max = TIME_CONFIG.minutesInDay) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(value, max));
+};
+
+const ensureOptionTimes = (option) => {
+  const safeStart = Number.isFinite(option.startMinute)
+    ? clampEditorMinute(option.startMinute, TIME_CONFIG.minutesInDay - TIME_CONFIG.timeStep)
+    : TIME_CONFIG.defaultSlot.start;
+  let safeEnd = Number.isFinite(option.endMinute)
+    ? clampEditorMinute(option.endMinute)
+    : TIME_CONFIG.defaultSlot.end;
+  if (safeEnd <= safeStart) {
+    safeEnd = Math.min(safeStart + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
+  }
+  option.startMinute = safeStart;
+  option.endMinute = safeEnd;
+};
+
+const getDefaultOptionDate = () => {
+  const draft = getState().editOptionsDraft;
+  if (draft?.options?.length) {
+    return draft.options[draft.options.length - 1].date ?? toLocalISO(new Date());
+  }
+  const poll = getState().activePoll;
+  if (poll?.poll_options?.length) {
+    return poll.poll_options[poll.poll_options.length - 1].option_date ?? toLocalISO(new Date());
+  }
+  return toLocalISO(getState().today ?? new Date());
+};
+
+const buildEditOptionsPayload = (draft) => {
+  const specifyTimesEnabled = Boolean(draft?.specifyTimesEnabled);
+  const options = Array.isArray(draft?.options) ? draft.options : [];
+  if (!options.length) {
+    throw new Error("Add at least one option before saving.");
+  }
+  const normalized = options.map((option) => {
+    if (!option?.date) {
+      const error = new Error("Each option must include a date.");
+      error.focusSelector = `[data-option-key="${option?.key}"] input[type="date"]`;
+      throw error;
+    }
+    if (specifyTimesEnabled) {
+      ensureOptionTimes(option);
+      if (!(option.endMinute > option.startMinute)) {
+        const error = new Error("Time ranges must end after they start.");
+        error.focusSelector = `[data-option-key="${option?.key}"] select[data-role="end"]`;
+        throw error;
+      }
+    }
+    return {
+      id: option.id ?? null,
+      key: option.key,
+      option_date: option.date,
+      start_minute: specifyTimesEnabled ? option.startMinute : null,
+      end_minute: specifyTimesEnabled ? option.endMinute : null,
+    };
+  });
+  return { specifyTimesEnabled, normalized };
+};
+
+const deriveRemovedOptionIds = (draft, normalizedOptions) => {
+  const baseline = new Set(
+    (draft?.baselineOptionIds ?? [])
+      .map((value) => Number.parseInt(value, 10))
+      .filter((value) => Number.isInteger(value))
+  );
+  normalizedOptions.forEach((option) => {
+    if (option.id) {
+      baseline.delete(option.id);
+    }
+  });
+  return Array.from(baseline);
+};
+
 const applyUpdatedPollDetails = (updated) => {
   const current = getState().activePoll;
   if (!current) return;
@@ -502,10 +655,167 @@ const handleManageEditDetails = () => {
   openEditDetailsModal();
 };
 
+const renderEditOptionsDraft = () => {
+  const draft = ensureEditOptionsDraft();
+  renderEditOptionsList(
+    draft,
+    {
+      onDateChange: (key, value) => handleEditOptionDateChange(key, value),
+      onStartChange: (key, value) => handleEditOptionStartChange(key, value),
+      onEndChange: (key, value) => handleEditOptionEndChange(key, value),
+      onRemove: (key) => handleEditOptionRemove(key),
+    },
+    TIME_CONFIG
+  );
+  setEditOptionsSpecifyToggle(draft.specifyTimesEnabled);
+};
+
+const focusFirstEditOptionField = () => {
+  const target = refs.editOptionsList?.querySelector('input[type="date"]');
+  target?.focus();
+};
+
+const openEditOptionsModal = () => {
+  const poll = getState().activePoll;
+  if (!poll) return;
+  const draft = buildEditOptionsDraftFromPoll(poll);
+  updateState({
+    editOptionsDraft: draft,
+    isUpdatingOptions: false,
+  });
+  setEditOptionsFeedback("");
+  setEditOptionsSaving(false);
+  setEditOptionsTimezoneLabel(formatTimezoneDisplay(poll.timezone));
+  renderEditOptionsDraft();
+  setEditOptionsModalState(true);
+  setTimeout(focusFirstEditOptionField, 0);
+};
+
+const closeEditOptionsModal = () => {
+  setEditOptionsModalState(false);
+  setEditOptionsSaving(false);
+  setEditOptionsFeedback("");
+  updateState({
+    isUpdatingOptions: false,
+    editOptionsDraft: getEmptyEditOptionsDraft(),
+  });
+};
+
+const handleAddEditOption = (event) => {
+  event?.preventDefault?.();
+  const draft = ensureEditOptionsDraft();
+  draft.options.push({
+    id: null,
+    key: generateOptionKey("local"),
+    date: getDefaultOptionDate(),
+    startMinute: TIME_CONFIG.defaultSlot.start,
+    endMinute: TIME_CONFIG.defaultSlot.end,
+  });
+  renderEditOptionsDraft();
+};
+
+const handleEditOptionDateChange = (key, value) => {
+  const draft = ensureEditOptionsDraft();
+  const option = draft.options.find((entry) => entry.key === key);
+  if (!option) return;
+  option.date = value;
+};
+
+const handleEditOptionStartChange = (key, value) => {
+  const draft = ensureEditOptionsDraft();
+  const option = draft.options.find((entry) => entry.key === key);
+  if (!option) return;
+  const sanitized = clampEditorMinute(value, TIME_CONFIG.minutesInDay - TIME_CONFIG.timeStep);
+  option.startMinute = sanitized;
+  if (!Number.isFinite(option.endMinute) || option.endMinute <= sanitized) {
+    option.endMinute = Math.min(sanitized + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
+    updateOptionControlValue(key, "end", option.endMinute);
+  }
+};
+
+const handleEditOptionEndChange = (key, value) => {
+  const draft = ensureEditOptionsDraft();
+  const option = draft.options.find((entry) => entry.key === key);
+  if (!option) return;
+  const start = Number.isFinite(option.startMinute) ? option.startMinute : TIME_CONFIG.defaultSlot.start;
+  const sanitized = clampEditorMinute(value);
+  if (sanitized <= start) {
+    option.endMinute = Math.min(start + TIME_CONFIG.timeStep, TIME_CONFIG.minutesInDay);
+    updateOptionControlValue(key, "end", option.endMinute);
+    return;
+  }
+  option.endMinute = sanitized;
+};
+
+const handleEditOptionRemove = (key) => {
+  const draft = ensureEditOptionsDraft();
+  const index = draft.options.findIndex((entry) => entry.key === key);
+  if (index === -1) return;
+  draft.options.splice(index, 1);
+  renderEditOptionsDraft();
+};
+
+const handleEditOptionsSpecifyToggle = (checked) => {
+  const draft = ensureEditOptionsDraft();
+  draft.specifyTimesEnabled = Boolean(checked);
+  if (checked) {
+    draft.options.forEach(ensureOptionTimes);
+  }
+  renderEditOptionsDraft();
+};
+
 const handleManageEditOptions = () => {
   if (!getState().canManageActivePoll) return;
   closeManageMenu();
-  console.debug("Edit options action selected.");
+  openEditOptionsModal();
+};
+
+const handleCancelEditOptions = (event) => {
+  event?.preventDefault?.();
+  if (getState().isUpdatingOptions) return;
+  closeEditOptionsModal();
+};
+
+const handleEditOptionsSubmit = async (event) => {
+  event?.preventDefault?.();
+  if (getState().isUpdatingOptions) return;
+  const poll = getState().activePoll;
+  if (!poll?.id) return;
+  const draft = ensureEditOptionsDraft();
+  let payload;
+  try {
+    payload = buildEditOptionsPayload(draft);
+  } catch (error) {
+    setEditOptionsFeedback(error.message ?? "Please review your options.", "error");
+    if (error.focusSelector) {
+      refs.editOptionsList?.querySelector(error.focusSelector)?.focus();
+    }
+    return;
+  }
+  const removedOptionIds = deriveRemovedOptionIds(draft, payload.normalized);
+  updateState({ isUpdatingOptions: true });
+  setEditOptionsSaving(true);
+  setEditOptionsFeedback("Saving changes...", "info");
+  try {
+    await updatePollOptions({
+      pollId: poll.id,
+      specifyTimesEnabled: payload.specifyTimesEnabled,
+      options: payload.normalized,
+      removedOptionIds,
+    });
+    const latest = await fetchPollDetail({ pollId: poll.id });
+    if (!latest) {
+      throw new Error("Unable to refresh the poll after saving. Please try again.");
+    }
+    applyPollDetail(latest, getState().activePollRelation ?? "created");
+    closeEditOptionsModal();
+  } catch (error) {
+    console.error("Failed to update poll options", error);
+    setEditOptionsFeedback(error.message ?? "Unable to update options. Try again.", "error");
+  } finally {
+    updateState({ isUpdatingOptions: false });
+    setEditOptionsSaving(false);
+  }
 };
 
 const applyPollDetail = (pollData, relation = "joined") => {
@@ -1054,6 +1364,9 @@ const handleDocumentKeydown = (event) => {
   if (!getState().isUpdatingPoll && isEditDetailsModalOpen()) {
     closeEditDetailsModal();
   }
+  if (!getState().isUpdatingOptions && isEditOptionsModalOpen()) {
+    closeEditOptionsModal();
+  }
 };
 
 const attachEventHandlers = () => {
@@ -1092,11 +1405,19 @@ const attachEventHandlers = () => {
   refs.editDetailsForm?.addEventListener("submit", handleEditDetailsSubmit);
   refs.cancelEditDetailsButton?.addEventListener("click", handleCancelEditDetails);
   refs.closeEditDetailsModal?.addEventListener("click", handleCancelEditDetails);
+  refs.editOptionsForm?.addEventListener("submit", handleEditOptionsSubmit);
+  refs.cancelEditOptionsButton?.addEventListener("click", handleCancelEditOptions);
+  refs.closeEditOptionsModal?.addEventListener("click", handleCancelEditOptions);
+  refs.addEditOptionButton?.addEventListener("click", handleAddEditOption);
+  refs.editOptionsSpecifyToggle?.addEventListener("change", (event) =>
+    handleEditOptionsSpecifyToggle(event.target.checked)
+  );
   wirePressAnimation(refs.createPollButton);
   wirePressAnimation(refs.joinPollButton);
   wirePressAnimation(refs.continueVoteButton);
   wirePressAnimation(refs.submitVoteButton);
   wirePressAnimation(refs.saveEditDetailsButton);
+  wirePressAnimation(refs.saveEditOptionsButton);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };
