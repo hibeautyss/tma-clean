@@ -436,10 +436,7 @@ const buildParticipantCell = (participant) => {
   const info = document.createElement("div");
   const name = document.createElement("strong");
   name.textContent = participant.name ?? "Guest";
-  const meta = document.createElement("small");
-  meta.textContent = participant.meta ?? "";
   info.appendChild(name);
-  info.appendChild(meta);
   wrapper.appendChild(avatar);
   wrapper.appendChild(info);
   return wrapper;
