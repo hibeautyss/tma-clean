@@ -72,6 +72,75 @@ const schedulePersist = () => {
 const POLL_STATUSES = ["live", "paused", "finished"];
 const AVAILABILITY_SEQUENCE = [null, "yes", "maybe", "no"];
 const POSITIVE_AVAILABILITY = new Set(["yes", "maybe"]);
+const VOTE_TRACKER_KEY = "submittedPollVotes";
+
+const readVoteTracker = () => {
+  try {
+    const raw = localStorage.getItem(VOTE_TRACKER_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.warn("Unable to read vote tracker", error);
+    return {};
+  }
+};
+
+const writeVoteTracker = (payload = {}) => {
+  try {
+    localStorage.setItem(VOTE_TRACKER_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn("Unable to persist vote tracker", error);
+  }
+};
+
+const getTrackedVote = (pollId) => {
+  if (!pollId) return null;
+  const tracker = readVoteTracker();
+  return tracker[pollId] ?? null;
+};
+
+const upsertTrackedVote = (pollId, payload) => {
+  if (!pollId || !payload) return;
+  const tracker = readVoteTracker();
+  tracker[pollId] = payload;
+  writeVoteTracker(tracker);
+};
+
+const removeTrackedVote = (pollId) => {
+  if (!pollId) return;
+  const tracker = readVoteTracker();
+  if (!tracker[pollId]) {
+    return;
+  }
+  delete tracker[pollId];
+  writeVoteTracker(tracker);
+};
+
+const rememberVoteSubmission = (poll, vote) => {
+  if (!poll?.id || !vote?.id) return;
+  upsertTrackedVote(poll.id, {
+    voteId: vote.id,
+    shareCode: poll.share_code ?? null,
+    voterName: vote.voter_name ?? null,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+const hasTrackedVoteForPoll = (pollData) => {
+  if (!pollData?.id) return false;
+  const entry = getTrackedVote(pollData.id);
+  if (!entry?.voteId) return false;
+  if (!Array.isArray(pollData.votes)) {
+    return true;
+  }
+  const hasMatch = pollData.votes.some((vote) => vote.id === entry.voteId);
+  if (hasMatch) {
+    return true;
+  }
+  removeTrackedVote(pollData.id);
+  return false;
+};
 
 const normalizeStatus = (status) => (POLL_STATUSES.includes(status) ? status : POLL_STATUSES[0]);
 
@@ -301,6 +370,7 @@ const renderPollDetail = () => {
 const applyPollDetail = (pollData, relation = "joined") => {
   const normalizedPoll = normalizePollData(pollData);
   const participants = mapVotesToParticipants(pollData.votes ?? []);
+  const alreadySubmitted = hasTrackedVoteForPoll(pollData);
   updateState({
     activePoll: normalizedPoll,
     activePollVotes: participants,
@@ -308,10 +378,14 @@ const applyPollDetail = (pollData, relation = "joined") => {
     voteComment: "",
     voteName: getDefaultParticipantName(),
     nameModalOpen: false,
-    hasSubmittedVote: false,
+    hasSubmittedVote: alreadySubmitted,
   });
   setVoteCommentValue("");
-  setVoteFeedbackMessage("");
+  if (alreadySubmitted) {
+    setVoteFeedbackMessage("You already submitted your availability for this poll.", "success");
+  } else {
+    setVoteFeedbackMessage("");
+  }
   renderPollDetail();
   if (relation) {
     recordPollHistoryEntry(normalizedPoll, relation);
@@ -622,10 +696,16 @@ const refreshActivePoll = async () => {
     const latest = await fetchPollDetail({ pollId: poll.id });
     if (!latest) return;
     const normalized = normalizePollData(latest);
+    const alreadySubmitted = hasTrackedVoteForPoll(latest);
+    const previouslyLocked = Boolean(getState().hasSubmittedVote);
     updateState({
       activePoll: normalized,
       activePollVotes: mapVotesToParticipants(latest.votes ?? []),
+      hasSubmittedVote: alreadySubmitted,
     });
+    if (alreadySubmitted && !previouslyLocked) {
+      setVoteFeedbackMessage("You already submitted your availability for this poll.", "success");
+    }
     renderPollDetail();
   } catch (error) {
     console.error("Failed to refresh poll", error);
@@ -651,12 +731,13 @@ const handleSubmitVote = async () => {
       optionId: option.id,
       availability: draft[option.id] ?? "no",
     }));
-    await submitVote({
+    const recordedVote = await submitVote({
       pollId: poll.id,
       voterName: nameValue,
       voterContact: getState().voteComment?.trim() || null,
       selections,
     });
+    rememberVoteSubmission(poll, recordedVote);
     setVoteFeedbackMessage("Thanks! Your vote has been recorded.", "success");
     updateState({
       voteDraft: buildInitialDraft(poll),

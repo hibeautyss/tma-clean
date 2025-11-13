@@ -461,15 +461,9 @@ const buildAvailabilityChip = (state, interactive = false, optionId, handler) =>
 const buildParticipantCell = (participant) => {
   const wrapper = document.createElement("div");
   wrapper.className = "participant-chip";
-  const avatar = document.createElement("span");
-  avatar.className = "avatar";
-  avatar.textContent = (participant.name ?? "?").trim().charAt(0).toUpperCase() || "?";
-  const info = document.createElement("div");
   const name = document.createElement("strong");
   name.textContent = participant.name ?? "Guest";
-  info.appendChild(name);
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(info);
+  wrapper.appendChild(name);
   return wrapper;
 };
 
@@ -511,7 +505,7 @@ export const renderPollGrid = ({
     youRow.className = "you-row";
     const youCell = document.createElement("td");
     youCell.innerHTML =
-      '<div class="participant-chip"><span class="avatar">Y</span><div><strong>You</strong><small>Draft</small></div></div>';
+      '<div class="participant-chip"><strong>You</strong><small>Draft</small></div>';
     youRow.appendChild(youCell);
     options.forEach((option) => {
       const td = document.createElement("td");
