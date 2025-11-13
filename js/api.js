@@ -292,3 +292,32 @@ export const submitVote = async ({ pollId, voterName, voterContact, selections }
     selections: selectionRows,
   };
 };
+
+export const fetchPollDetail = async ({ pollId, shareCode }) => {
+  const params = {
+    select:
+      "id,title,description,location,timezone,specify_times,share_code,creator,created_at,poll_options(id,option_date,start_minute,end_minute,created_at),votes(id,voter_name,voter_contact,created_at,vote_selections(poll_option_id,availability))",
+    limit: "1",
+  };
+  if (pollId) {
+    params.id = `eq.${pollId}`;
+  } else if (shareCode) {
+    params.share_code = `eq.${shareCode}`;
+  } else {
+    throw new Error("Provide either pollId or shareCode.");
+  }
+  const rows = await supabaseRequest(buildRestPath("/polls", params), {
+    method: "GET",
+  });
+  if (!Array.isArray(rows) || !rows.length) {
+    return null;
+  }
+  const poll = rows[0];
+  poll.poll_options = Array.isArray(poll.poll_options) ? poll.poll_options : [];
+  poll.votes = Array.isArray(poll.votes) ? poll.votes : [];
+  poll.votes = poll.votes.map((vote) => ({
+    ...vote,
+    vote_selections: Array.isArray(vote.vote_selections) ? vote.vote_selections : [],
+  }));
+  return poll;
+};

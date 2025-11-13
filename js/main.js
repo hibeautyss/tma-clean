@@ -1,5 +1,5 @@
 import { initTelegram, getTelegramUser } from "./telegram.js";
-import { loadUserState, saveUserState, createRemotePoll, fetchPoll } from "./api.js";
+import { loadUserState, saveUserState, createRemotePoll, fetchPollDetail, submitVote } from "./api.js";
 import { getState, updateState } from "./state.js";
 import {
   initUI,
@@ -17,6 +17,13 @@ import {
   renderPollHistory,
   setCreatedOnlyFilter,
   setJoinFeedback,
+  renderPollSummary,
+  renderPollGrid,
+  renderCommentList,
+  setVoteCommentValue,
+  setVoteFeedbackMessage,
+  setVoteNameValue,
+  toggleNameModal,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -64,6 +71,7 @@ const TIMEZONE_CATALOG = [
 const SCREENS = {
   DASHBOARD: "dashboard",
   CREATE: "create",
+  POLL: "poll",
 };
 
 let refs = {};
@@ -79,6 +87,8 @@ const schedulePersist = () => {
 };
 
 const POLL_STATUSES = ["live", "paused", "finished"];
+const AVAILABILITY_SEQUENCE = [null, "yes", "maybe", "no"];
+const POSITIVE_AVAILABILITY = new Set(["yes", "maybe"]);
 
 const normalizeStatus = (status) => (POLL_STATUSES.includes(status) ? status : POLL_STATUSES[0]);
 
@@ -125,7 +135,12 @@ const recordPollHistoryEntry = (poll, relation) => {
 };
 
 const syncScreenVisibility = (screen) => {
-  const normalized = screen === SCREENS.CREATE ? SCREENS.CREATE : SCREENS.DASHBOARD;
+  let normalized = SCREENS.DASHBOARD;
+  if (screen === SCREENS.CREATE) {
+    normalized = SCREENS.CREATE;
+  } else if (screen === SCREENS.POLL) {
+    normalized = SCREENS.POLL;
+  }
   setScreenVisibility(normalized);
   return normalized;
 };
@@ -136,7 +151,100 @@ const setActiveScreen = (screen) => {
   schedulePersist();
   if (normalized === SCREENS.CREATE) {
     renderAll();
+  } else if (normalized === SCREENS.POLL) {
+    renderPollDetail();
   }
+};
+
+const normalizePollData = (poll) => {
+  if (!poll) return null;
+  const options = Array.isArray(poll.poll_options) ? [...poll.poll_options] : [];
+  options.sort((a, b) => {
+    const dateA = new Date(`${a.option_date}T00:00:00Z`).valueOf();
+    const dateB = new Date(`${b.option_date}T00:00:00Z`).valueOf();
+    if (dateA === dateB) {
+      return (a.start_minute ?? 0) - (b.start_minute ?? 0);
+    }
+    return dateA - dateB;
+  });
+  return { ...poll, poll_options: options };
+};
+
+const mapVotesToParticipants = (votes = []) =>
+  votes.map((vote) => {
+    const selections = {};
+    (vote.vote_selections ?? []).forEach((selection) => {
+      selections[selection.poll_option_id] = selection.availability;
+    });
+    return {
+      id: vote.id,
+      name: vote.voter_name ?? "Guest",
+      meta: new Date(vote.created_at ?? Date.now()).toLocaleString(),
+      comment: vote.voter_contact ?? "",
+      selections,
+    };
+  });
+
+const buildInitialDraft = (poll) => {
+  const selections = {};
+  (poll?.poll_options ?? []).forEach((option) => {
+    selections[option.id] = null;
+  });
+  return selections;
+};
+
+const getNextAvailability = (current) => {
+  const index = AVAILABILITY_SEQUENCE.indexOf(current ?? null);
+  const nextIndex = (index + 1) % AVAILABILITY_SEQUENCE.length;
+  return AVAILABILITY_SEQUENCE[nextIndex];
+};
+
+const hasPositiveSelection = (selections = {}) =>
+  Object.values(selections).some((value) => POSITIVE_AVAILABILITY.has(value));
+
+const getDefaultParticipantName = () => {
+  const user = getState().telegramUser;
+  if (!user) return "";
+  return user.first_name || user.username || user.last_name || "";
+};
+
+const renderPollDetail = () => {
+  const poll = getState().activePoll;
+  if (!poll) return;
+  const participants = getState().activePollVotes ?? [];
+  const draft = getState().voteDraft ?? {};
+  renderPollSummary(poll, participants.length);
+  renderPollGrid({
+    options: poll.poll_options,
+    participants,
+    draft,
+    onToggle: handleDraftSlotToggle,
+  });
+  const comments = participants
+    .filter((participant) => participant.comment)
+    .map((participant) => ({ name: participant.name, body: participant.comment }));
+  renderCommentList(comments);
+  setVoteCommentValue(getState().voteComment ?? "");
+};
+
+const applyPollDetail = (pollData, relation = "joined") => {
+  const normalizedPoll = normalizePollData(pollData);
+  const participants = mapVotesToParticipants(pollData.votes ?? []);
+  updateState({
+    activePoll: normalizedPoll,
+    activePollVotes: participants,
+    voteDraft: buildInitialDraft(normalizedPoll),
+    voteComment: "",
+    voteName: getDefaultParticipantName(),
+    nameModalOpen: false,
+  });
+  setVoteCommentValue("");
+  setVoteFeedbackMessage("");
+  renderPollDetail();
+  if (relation) {
+    recordPollHistoryEntry(normalizedPoll, relation);
+  }
+  setActiveScreen(SCREENS.POLL);
 };
 
 const formatDisplayDate = (date, options) =>
@@ -369,20 +477,135 @@ const handleJoinPoll = async () => {
   const shareCode = trimmed.toUpperCase();
   setJoinFeedback(`Looking up ${shareCode}...`, "info");
   try {
-    const poll = await fetchPoll({ shareCode });
+    const poll = await fetchPollDetail({ shareCode });
     if (!poll) {
       setJoinFeedback("No poll found with that code.", "error");
       return;
     }
-    setJoinFeedback(`Joined "${poll.title ?? "Untitled poll"}".`, "success");
-    if (refs.joinCodeInput) {
-      refs.joinCodeInput.value = "";
-    }
-    recordPollHistoryEntry(poll, "joined");
+    setJoinFeedback(`Loaded "${poll.title ?? "Untitled poll"}".`, "success");
+    refs.joinCodeInput && (refs.joinCodeInput.value = "");
+    applyPollDetail(poll, "joined");
   } catch (error) {
     console.error("Failed to join poll", error);
     setJoinFeedback(error.message ?? "Unable to join poll. Please try again.", "error");
   }
+};
+
+const handleDraftSlotToggle = (optionId) => {
+  const poll = getState().activePoll;
+  if (!poll || !optionId) return;
+  const currentDraft = { ...(getState().voteDraft ?? {}) };
+  currentDraft[optionId] = getNextAvailability(currentDraft[optionId]);
+  updateState({ voteDraft: currentDraft });
+  setVoteFeedbackMessage("");
+  renderPollDetail();
+};
+
+const handleVoteCommentChange = (value) => {
+  updateState({ voteComment: value });
+  setVoteFeedbackMessage("");
+};
+
+const handleResetVote = () => {
+  const poll = getState().activePoll;
+  if (!poll) return;
+  updateState({
+    voteDraft: buildInitialDraft(poll),
+    voteComment: "",
+  });
+  setVoteCommentValue("");
+  setVoteFeedbackMessage("");
+  renderPollDetail();
+};
+
+const openNameModal = () => {
+  const defaultName = getState().voteName || getDefaultParticipantName();
+  updateState({ voteName: defaultName, nameModalOpen: true });
+  setVoteNameValue(defaultName);
+  toggleNameModal(true);
+};
+
+const closeNameModal = () => {
+  updateState({ nameModalOpen: false });
+  toggleNameModal(false);
+};
+
+const handleContinueVote = () => {
+  const draft = getState().voteDraft ?? {};
+  if (!hasPositiveSelection(draft)) {
+    setVoteFeedbackMessage("Select at least one slot (green or yellow) first.", "error");
+    return;
+  }
+  setVoteFeedbackMessage("");
+  openNameModal();
+};
+
+const refreshActivePoll = async () => {
+  const poll = getState().activePoll;
+  if (!poll?.id) return;
+  try {
+    const latest = await fetchPollDetail({ pollId: poll.id });
+    if (!latest) return;
+    const normalized = normalizePollData(latest);
+    updateState({
+      activePoll: normalized,
+      activePollVotes: mapVotesToParticipants(latest.votes ?? []),
+    });
+    renderPollDetail();
+  } catch (error) {
+    console.error("Failed to refresh poll", error);
+  }
+};
+
+const handleSubmitVote = async () => {
+  const poll = getState().activePoll;
+  if (!poll || getState().isVoting) return;
+  const draft = getState().voteDraft ?? {};
+  if (!hasPositiveSelection(draft)) {
+    setVoteFeedbackMessage("Select at least one slot (green or yellow) first.", "error");
+    return;
+  }
+  const nameValue = refs.voteNameInput?.value?.trim() || getState().voteName?.trim();
+  if (!nameValue) {
+    setVoteFeedbackMessage("Please provide your name before submitting.", "error");
+    return;
+  }
+  updateState({ isVoting: true });
+  try {
+    const selections = (poll.poll_options ?? []).map((option) => ({
+      optionId: option.id,
+      availability: draft[option.id] ?? "no",
+    }));
+    await submitVote({
+      pollId: poll.id,
+      voterName: nameValue,
+      voterContact: getState().voteComment?.trim() || null,
+      selections,
+    });
+    setVoteFeedbackMessage("Thanks! Your vote has been recorded.", "success");
+    updateState({
+      voteDraft: buildInitialDraft(poll),
+      voteComment: "",
+      voteName: nameValue,
+      nameModalOpen: false,
+      isVoting: false,
+    });
+    setVoteCommentValue("");
+    toggleNameModal(false);
+    await refreshActivePoll();
+  } catch (error) {
+    console.error("Failed to submit vote", error);
+    setVoteFeedbackMessage(error.message ?? "Unable to submit vote. Try again.", "error");
+    updateState({ isVoting: false });
+  }
+};
+
+const handleBackToDashboardFromPoll = () => {
+  setActiveScreen(SCREENS.DASHBOARD);
+};
+
+const handleNameInputChange = (value) => {
+  updateState({ voteName: value });
 };
 
 const handleJoinInputKeydown = (event) => {
@@ -520,8 +743,18 @@ const attachEventHandlers = () => {
   refs.createdOnlyToggle?.addEventListener("change", (event) =>
     handleCreatedOnlyToggle(event.target.checked)
   );
+  refs.voteComment?.addEventListener("input", (event) => handleVoteCommentChange(event.target.value));
+  refs.resetVoteButton?.addEventListener("click", handleResetVote);
+  refs.continueVoteButton?.addEventListener("click", handleContinueVote);
+  refs.backToDashboardFromPoll?.addEventListener("click", handleBackToDashboardFromPoll);
+  refs.modalBackButton?.addEventListener("click", closeNameModal);
+  refs.closeNameModal?.addEventListener("click", closeNameModal);
+  refs.submitVoteButton?.addEventListener("click", handleSubmitVote);
+  refs.voteNameInput?.addEventListener("input", (event) => handleNameInputChange(event.target.value));
   wirePressAnimation(refs.createPollButton);
   wirePressAnimation(refs.joinPollButton);
+  wirePressAnimation(refs.continueVoteButton);
+  wirePressAnimation(refs.submitVoteButton);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };
@@ -554,6 +787,9 @@ const bootstrap = async () => {
   }
   await hydrateState();
   syncScreenVisibility(getState().screen);
+  if (getState().screen === SCREENS.POLL) {
+    renderPollDetail();
+  }
   renderPollSection();
   setJoinFeedback("");
   setFormFeedback("");

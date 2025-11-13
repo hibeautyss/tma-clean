@@ -15,11 +15,18 @@ const state = {
     status: "live",
     createdOnly: false,
   },
+  activePoll: null,
+  activePollVotes: [],
+  voteDraft: null,
+  voteComment: "",
+  voteName: "",
+  isVoting: false,
+  nameModalOpen: false,
 };
 
 const mapKeys = new Set(["selectedDates"]);
 const dateKeys = new Set(["today", "currentView"]);
-const arrayKeys = new Set(["pollHistory"]);
+const arrayKeys = new Set(["pollHistory", "activePollVotes"]);
 
 const toMap = (value) => {
   if (value instanceof Map) return value;

@@ -42,13 +42,18 @@ export const setScreenVisibility = (screen) => {
   if (refs.createView) {
     refs.createView.hidden = screen !== "create";
   }
+  if (refs.pollView) {
+    refs.pollView.hidden = screen !== "poll";
+  }
 };
 
 export const initUI = () => {
   refs.dashboardView = document.getElementById("dashboardView");
   refs.createView = document.getElementById("createView");
+  refs.pollView = document.getElementById("pollView");
   refs.newPollButton = document.getElementById("newPollButton");
   refs.backToDashboard = document.getElementById("backToDashboard");
+  refs.backToDashboardFromPoll = document.getElementById("backToDashboardFromPoll");
   refs.joinCodeInput = document.getElementById("joinCodeInput");
   refs.joinPollButton = document.getElementById("joinPollButton");
   refs.joinFeedback = document.getElementById("joinFeedback");
@@ -75,6 +80,26 @@ export const initUI = () => {
   refs.pollsList = document.getElementById("pollsList");
   refs.pollsEmpty = document.getElementById("pollsEmpty");
   refs.formFeedback = document.getElementById("formFeedback");
+  refs.pollTitle = document.getElementById("pollTitle");
+  refs.pollMeta = document.getElementById("pollMeta");
+  refs.pollDescription = document.getElementById("pollDescription");
+  refs.pollStatusBadge = document.getElementById("pollStatusBadge");
+  refs.pollOptionCount = document.getElementById("pollOptionCount");
+  refs.pollTimezoneChip = document.getElementById("pollTimezoneChip");
+  refs.participantCount = document.getElementById("participantCount");
+  refs.pollGrid = document.getElementById("pollGrid");
+  refs.voteComment = document.getElementById("voteComment");
+  refs.voteFeedback = document.getElementById("voteFeedback");
+  refs.resetVoteButton = document.getElementById("resetVoteButton");
+  refs.continueVoteButton = document.getElementById("continueVoteButton");
+  refs.commentList = document.getElementById("commentList");
+  refs.commentCount = document.getElementById("commentCount");
+  refs.modalScrim = document.getElementById("modalScrim");
+  refs.nameModal = document.getElementById("nameModal");
+  refs.voteNameInput = document.getElementById("voteNameInput");
+  refs.modalBackButton = document.getElementById("modalBackButton");
+  refs.closeNameModal = document.getElementById("closeNameModal");
+  refs.submitVoteButton = document.getElementById("submitVoteButton");
   return refs;
 };
 
@@ -330,4 +355,185 @@ export const renderPollHistory = (items = []) => {
   items.forEach((poll) => {
     refs.pollsList.appendChild(buildPollCard(poll));
   });
+};
+
+export const setVoteCommentValue = (value = "") => {
+  if (refs.voteComment) {
+    refs.voteComment.value = value ?? "";
+  }
+};
+
+export const setVoteFeedbackMessage = (message = "", tone = "info") => {
+  if (!refs.voteFeedback) return;
+  refs.voteFeedback.textContent = message ?? "";
+  refs.voteFeedback.classList.toggle("is-error", tone === "error");
+  refs.voteFeedback.classList.toggle("is-success", tone === "success");
+};
+
+export const renderPollSummary = (poll = {}, participantCount = 0) => {
+  if (refs.pollTitle) refs.pollTitle.textContent = poll.title ?? "Untitled poll";
+  if (refs.pollDescription) {
+    refs.pollDescription.textContent = poll.description ?? "";
+    refs.pollDescription.hidden = !poll.description;
+  }
+  if (refs.pollMeta) {
+    const creator = poll.creator?.username || poll.creator?.firstName || poll.creator?.id || "Anonymous";
+    refs.pollMeta.textContent = `by ${creator}`;
+  }
+  if (refs.pollStatusBadge) {
+    refs.pollStatusBadge.textContent = poll.status ?? "Live";
+  }
+  if (refs.pollOptionCount) {
+    refs.pollOptionCount.textContent = `${poll.poll_options?.length ?? 0} options`;
+  }
+  if (refs.pollTimezoneChip) {
+    refs.pollTimezoneChip.textContent = poll.timezone ?? "UTC";
+  }
+  if (refs.participantCount) {
+    refs.participantCount.textContent = `${participantCount} participant${participantCount === 1 ? "" : "s"}`;
+  }
+};
+
+const statusSymbols = {
+  yes: "✓",
+  maybe: "≈",
+  no: "✕",
+};
+
+const buildAvailabilityChip = (state, interactive = false, optionId, handler) => {
+  const el = document.createElement(interactive ? "button" : "span");
+  if (interactive) {
+    el.type = "button";
+    if (optionId) {
+      el.dataset.optionId = optionId;
+    }
+    if (handler) {
+      el.addEventListener("click", () => handler(optionId));
+    }
+  }
+  el.className = "availability-chip";
+  if (state) {
+    el.classList.add(`chip-${state}`);
+    el.textContent = statusSymbols[state] ?? "•";
+  } else {
+    el.textContent = "•";
+  }
+  return el;
+};
+
+const buildParticipantCell = (participant) => {
+  const wrapper = document.createElement("div");
+  wrapper.className = "participant-chip";
+  const avatar = document.createElement("span");
+  avatar.className = "avatar";
+  avatar.textContent = (participant.name ?? "?").trim().charAt(0).toUpperCase() || "?";
+  const info = document.createElement("div");
+  const name = document.createElement("strong");
+  name.textContent = participant.name ?? "Guest";
+  const meta = document.createElement("small");
+  meta.textContent = participant.meta ?? "";
+  info.appendChild(name);
+  info.appendChild(meta);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(info);
+  return wrapper;
+};
+
+export const renderPollGrid = ({
+  options = [],
+  participants = [],
+  draft = {},
+  onToggle,
+} = {}) => {
+  if (!refs.pollGrid) return;
+  const table = document.createElement("table");
+  table.className = "grid-table";
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  const nameTh = document.createElement("th");
+  nameTh.textContent = "Participants";
+  headerRow.appendChild(nameTh);
+  options.forEach((option) => {
+    const th = document.createElement("th");
+    th.innerHTML = `
+      <div class="option-header">
+        <span class="option-date">${formatDisplayDate(new Date(option.option_date), {
+          month: "short",
+          day: "numeric",
+        })}</span>
+        <span class="option-time">${formatTime(option.start_minute ?? 0)}</span>
+      </div>
+    `;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  const youRow = document.createElement("tr");
+  youRow.className = "you-row";
+  const youCell = document.createElement("td");
+  youCell.innerHTML =
+    '<div class="participant-chip"><span class="avatar">Y</span><div><strong>You</strong><small>Draft</small></div></div>';
+  youRow.appendChild(youCell);
+  options.forEach((option) => {
+    const td = document.createElement("td");
+    const chip = buildAvailabilityChip(draft[option.id] ?? null, true, option.id, onToggle);
+    td.appendChild(chip);
+    youRow.appendChild(td);
+  });
+  tbody.appendChild(youRow);
+
+  participants.forEach((participant) => {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.appendChild(buildParticipantCell(participant));
+    row.appendChild(cell);
+    options.forEach((option) => {
+      const td = document.createElement("td");
+      const chip = buildAvailabilityChip(participant.selections?.[option.id] ?? null);
+      td.appendChild(chip);
+      row.appendChild(td);
+    });
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+  refs.pollGrid.innerHTML = "";
+  refs.pollGrid.appendChild(table);
+};
+
+export const renderCommentList = (comments = []) => {
+  if (!refs.commentList || !refs.commentCount) return;
+  refs.commentCount.textContent = comments.length;
+  refs.commentList.innerHTML = "";
+  if (!comments.length) {
+    const li = document.createElement("li");
+    li.className = "comment-item";
+    li.textContent = "No comments yet.";
+    refs.commentList.appendChild(li);
+    return;
+  }
+  comments.forEach((comment) => {
+    const li = document.createElement("li");
+    li.className = "comment-item";
+    li.innerHTML = `<strong>${comment.name ?? "Guest"}</strong><p>${comment.body ?? ""}</p>`;
+    refs.commentList.appendChild(li);
+  });
+};
+
+export const setVoteNameValue = (value = "") => {
+  if (refs.voteNameInput) {
+    refs.voteNameInput.value = value ?? "";
+  }
+};
+
+export const toggleNameModal = (open) => {
+  if (refs.modalScrim) {
+    refs.modalScrim.hidden = !open;
+  }
+  if (refs.nameModal) {
+    refs.nameModal.hidden = !open;
+  }
 };
