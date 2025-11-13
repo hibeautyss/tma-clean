@@ -725,7 +725,11 @@ textarea {
 }
 
 .primary-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
+  background: #353a4c;
+  color: #9da3bb;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .primary-btn.active {

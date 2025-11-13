@@ -24,6 +24,7 @@ import {
   setVoteFeedbackMessage,
   setVoteNameValue,
   toggleNameModal,
+  setContinueButtonEnabled,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -213,6 +214,7 @@ const renderPollDetail = () => {
   if (!poll) return;
   const participants = getState().activePollVotes ?? [];
   const draft = getState().voteDraft ?? {};
+  const hasSelections = hasPositiveSelection(draft);
   renderPollSummary(poll, participants.length);
   renderPollGrid({
     options: poll.poll_options,
@@ -225,6 +227,7 @@ const renderPollDetail = () => {
     .map((participant) => ({ name: participant.name, body: participant.comment }));
   renderCommentList(comments);
   setVoteCommentValue(getState().voteComment ?? "");
+  setContinueButtonEnabled(hasSelections);
 };
 
 const applyPollDetail = (pollData, relation = "joined") => {

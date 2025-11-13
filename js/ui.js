@@ -370,6 +370,12 @@ export const setVoteFeedbackMessage = (message = "", tone = "info") => {
   refs.voteFeedback.classList.toggle("is-success", tone === "success");
 };
 
+export const setContinueButtonEnabled = (enabled) => {
+  if (!refs.continueVoteButton) return;
+  refs.continueVoteButton.disabled = !enabled;
+  refs.continueVoteButton.classList.toggle("active", enabled);
+};
+
 export const renderPollSummary = (poll = {}, participantCount = 0) => {
   if (refs.pollTitle) refs.pollTitle.textContent = poll.title ?? "Untitled poll";
   if (refs.pollDescription) {
