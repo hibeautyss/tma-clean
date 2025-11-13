@@ -21,20 +21,6 @@ const formatDuration = (minutes) => {
   return `${mins}m`;
 };
 
-const formatTimestamp = (value) => {
-  if (!value) return "Unknown time";
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) {
-    return "Unknown time";
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-};
-
 export const setScreenVisibility = (screen) => {
   if (refs.dashboardView) {
     refs.dashboardView.hidden = screen !== "dashboard";
@@ -86,6 +72,7 @@ export const initUI = () => {
   refs.pollMeta = document.getElementById("pollMeta");
   refs.pollDescription = document.getElementById("pollDescription");
   refs.pollStatusBadge = document.getElementById("pollStatusBadge");
+  refs.pollManageButton = document.getElementById("pollManageButton");
   refs.pollOptionCount = document.getElementById("pollOptionCount");
   refs.participantCount = document.getElementById("participantCount");
   refs.pollGrid = document.getElementById("pollGrid");
@@ -336,7 +323,6 @@ const buildPollCard = (poll, handlers = {}) => {
   card.setAttribute("role", "button");
   card.dataset.pollId = poll.id ?? "";
   card.dataset.shareCode = poll.share_code ?? "";
-  const relationLabel = poll.relation === "created" ? "Created by you" : "Participating";
   const statusPill = `<span class="status-pill">${poll.status ?? "live"}</span>`;
   const manageButton =
     poll.relation === "created"
@@ -350,10 +336,8 @@ const buildPollCard = (poll, handlers = {}) => {
         ${manageButton}
       </div>
     </div>
-    <div class="relation-tag">${relationLabel}</div>
     <div class="poll-card-footer">
       <span>Code: ${poll.share_code ?? "N/A"}</span>
-      <span>${formatTimestamp(poll.timestamp)}</span>
     </div>
   `;
   const handleSelect = () => handlers.onSelect?.(poll);
@@ -422,6 +406,11 @@ export const renderPollSummary = (poll = {}, participantCount = 0) => {
   }
   if (refs.pollStatusBadge) {
     refs.pollStatusBadge.textContent = poll.status ?? "Live";
+  }
+  if (refs.pollManageButton) {
+    const canManage = Boolean(poll.canManage);
+    refs.pollManageButton.hidden = !canManage;
+    refs.pollManageButton.disabled = !canManage;
   }
   if (refs.pollOptionCount) {
     refs.pollOptionCount.textContent = `${poll.poll_options?.length ?? 0} options`;

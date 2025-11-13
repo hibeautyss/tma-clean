@@ -190,7 +190,18 @@
               <h2 id="pollTitle">Loading...</h2>
               <p id="pollMeta" class="poll-meta"></p>
             </div>
-            <span class="status-pill" id="pollStatusBadge">Live</span>
+            <div class="poll-summary-actions">
+              <span class="status-pill" id="pollStatusBadge">Live</span>
+              <button
+                type="button"
+                class="manage-btn"
+                id="pollManageButton"
+                aria-label="Manage poll"
+                hidden
+              >
+                Manage
+              </button>
+            </div>
           </div>
           <p id="pollDescription" class="poll-description"></p>
         </section>

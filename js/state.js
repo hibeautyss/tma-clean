@@ -17,6 +17,8 @@ const state = {
   },
   activePoll: null,
   activePollVotes: [],
+  activePollRelation: "joined",
+  canManageActivePoll: false,
   voteDraft: null,
   voteComment: "",
   voteName: "",

@@ -344,11 +344,13 @@ const renderPollDetail = () => {
   const participants = getState().activePollVotes ?? [];
   const draft = getState().voteDraft ?? {};
   const readOnly = Boolean(getState().hasSubmittedVote);
+  const canManage = Boolean(getState().canManageActivePoll);
   const hasSelections = hasPositiveSelection(draft);
   renderPollSummary(
     {
       ...poll,
       timezone_label: formatTimezoneDisplay(poll.timezone),
+      canManage,
     },
     participants.length
   );
@@ -368,9 +370,15 @@ const renderPollDetail = () => {
 };
 
 const applyPollDetail = (pollData, relation = "joined") => {
-  const normalizedPoll = normalizePollData(pollData);
+  const userId = getState().telegramUser?.id;
+  const derivedRelation =
+    relation === "created" || (pollData.creator?.id && pollData.creator.id === userId)
+      ? "created"
+      : "joined";
+  const normalizedPoll = { ...normalizePollData(pollData), relation: derivedRelation };
   const participants = mapVotesToParticipants(pollData.votes ?? []);
   const alreadySubmitted = hasTrackedVoteForPoll(pollData);
+  const canManage = derivedRelation === "created";
   updateState({
     activePoll: normalizedPoll,
     activePollVotes: participants,
@@ -379,6 +387,8 @@ const applyPollDetail = (pollData, relation = "joined") => {
     voteName: getDefaultParticipantName(),
     nameModalOpen: false,
     hasSubmittedVote: alreadySubmitted,
+    activePollRelation: derivedRelation,
+    canManageActivePoll: canManage,
   });
   setVoteCommentValue("");
   if (alreadySubmitted) {
@@ -689,6 +699,20 @@ const handleContinueVote = () => {
   openNameModal();
 };
 
+const handleActivePollManage = () => {
+  if (!getState().canManageActivePoll) return;
+  const poll = getState().activePoll;
+  if (!poll) return;
+  openPollFromHistory(
+    {
+      id: poll.id,
+      share_code: poll.share_code,
+      relation: "created",
+    },
+    "created"
+  );
+};
+
 const refreshActivePoll = async () => {
   const poll = getState().activePoll;
   if (!poll?.id) return;
@@ -698,10 +722,19 @@ const refreshActivePoll = async () => {
     const normalized = normalizePollData(latest);
     const alreadySubmitted = hasTrackedVoteForPoll(latest);
     const previouslyLocked = Boolean(getState().hasSubmittedVote);
+    const userId = getState().telegramUser?.id;
+    const derivedRelation =
+      getState().activePollRelation === "created" ||
+      (latest.creator?.id && latest.creator.id === userId)
+        ? "created"
+        : "joined";
+    const canManage = derivedRelation === "created";
     updateState({
-      activePoll: normalized,
+      activePoll: { ...normalized, relation: derivedRelation },
       activePollVotes: mapVotesToParticipants(latest.votes ?? []),
       hasSubmittedVote: alreadySubmitted,
+      activePollRelation: derivedRelation,
+      canManageActivePoll: canManage,
     });
     if (alreadySubmitted && !previouslyLocked) {
       setVoteFeedbackMessage("You already submitted your availability for this poll.", "success");
@@ -887,6 +920,7 @@ const attachEventHandlers = () => {
   );
   refs.timezoneButton.addEventListener("click", handleTimezoneButtonClick);
   refs.pollTimezoneButton?.addEventListener("click", handleTimezoneButtonClick);
+  refs.pollManageButton?.addEventListener("click", handleActivePollManage);
   refs.timezoneClose.addEventListener("click", () => setTimezonePopoverVisible(false));
   refs.timezoneSearch.addEventListener("input", (event) =>
     handleTimezoneSearch(event.target.value)

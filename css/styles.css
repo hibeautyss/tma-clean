@@ -743,14 +743,9 @@ textarea {
   outline: none;
 }
 
-.relation-tag {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
 .poll-card-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -819,6 +814,12 @@ textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+}
+
+.poll-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .poll-meta {
