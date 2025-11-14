@@ -477,7 +477,12 @@ textarea {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.selection-copy {
+  flex: 1 1 220px;
 }
 
 .selection-copy h3 {
@@ -494,6 +499,8 @@ textarea {
 .selection-count {
   color: var(--text-secondary);
   font-size: 13px;
+  display: inline-block;
+  margin-top: 4px;
 }
 
 .toggle {

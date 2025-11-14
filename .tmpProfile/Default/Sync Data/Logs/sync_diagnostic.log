@@ -1,0 +1,14 @@
+2025-11-14 08:38:41.670: [INFO][Sync] Reset engine, reason: 8
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Bookmarks
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Preferences
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Passwords
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Autofill Profiles
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Autofill
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Extensions
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Sessions
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Extension settings
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: History Delete Directives
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Device Info
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: User Consents
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Send Tab To Self
+2025-11-14 08:38:41.670: [INFO][Sync] Stopped: Web Apps

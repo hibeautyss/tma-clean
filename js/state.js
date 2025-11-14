@@ -2,15 +2,25 @@ const initialToday = new Date();
 
 const state = {
   telegramUser: null,
-  selectedDates: new Map(),
-  specifyTimesEnabled: false,
+  selectedDates: new Map([
+    [
+      new Date().toISOString().slice(0, 10),
+      {
+        slots: [
+          { start: 9 * 60, end: 10 * 60, id: null },
+          { start: 14 * 60, end: 15 * 60 + 30, id: null },
+        ],
+      },
+    ],
+  ]),
+  specifyTimesEnabled: true,
   isSubmitting: false,
   isUpdatingPoll: false,
   timezone: "Europe/Moscow",
   timezoneSearch: "",
   today: initialToday,
   currentView: new Date(initialToday.getFullYear(), initialToday.getMonth(), 1),
-  screen: "dashboard",
+  screen: "create",
   pollHistory: [],
   pollFilters: {
     status: "live",
