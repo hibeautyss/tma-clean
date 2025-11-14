@@ -107,19 +107,9 @@
               </div>
             </form>
             <div id="formFeedback" class="form-feedback" role="status" aria-live="polite" hidden></div>
-            <div class="invite-link-card" id="inviteLinkCard" hidden>
-              <div class="invite-link-header">
-                <p class="eyebrow">Invite link</p>
-                <p class="invite-link-subtitle">Share this URL to let people open your poll directly inside Telegram.</p>
-              </div>
-              <div class="invite-link-body">
-                <code id="inviteLinkValue" class="invite-link-value" role="status" aria-live="polite"></code>
-                <button type="button" class="ghost-btn invite-copy-btn" id="copyInviteLinkButton">Copy link</button>
-              </div>
-              <p class="invite-link-meta">
-                Share code <strong id="inviteShareCodeValue"></strong> still works everywhere.
-              </p>
-            </div>
+            <button type="button" class="ghost-btn full-width" id="showInviteModalButton" hidden>
+              Show invite link again
+            </button>
           </div>
         </section>
 
@@ -454,6 +444,31 @@
           <button type="submit" class="primary-btn" id="saveEditOptionsButton">Save changes</button>
         </div>
       </form>
+    </div>
+
+    <div id="inviteModal" class="modal-shell" hidden aria-modal="true" role="dialog">
+      <div class="modal-card">
+        <div class="modal-header between">
+          <div>
+            <p class="eyebrow">Invite link</p>
+            <h3>Share with participants</h3>
+          </div>
+          <button type="button" class="icon-btn" id="closeInviteModalButton" aria-label="Close">&times;</button>
+        </div>
+        <p class="invite-link-subtitle">
+          Share this URL to let people open your poll directly inside Telegram.
+        </p>
+        <div class="invite-link-body">
+          <code id="inviteLinkValue" class="invite-link-value" role="status" aria-live="polite"></code>
+          <button type="button" class="primary-btn invite-copy-btn" id="copyInviteLinkButton">Copy link</button>
+        </div>
+        <p class="invite-link-meta">
+          Share code <strong id="inviteShareCodeValue"></strong> still works everywhere.
+        </p>
+        <div class="modal-actions">
+          <button type="button" class="ghost-btn full-width" id="dismissInviteModalButton">Got it</button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./js/main.js"></script>

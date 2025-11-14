@@ -91,10 +91,13 @@ export const initUI = () => {
   refs.timezoneEmpty = document.getElementById("timezoneEmpty");
   refs.timezoneClose = document.getElementById("timezoneClose");
   refs.createPollButton = document.getElementById("createPollButton");
-  refs.inviteLinkCard = document.getElementById("inviteLinkCard");
+  refs.showInviteModalButton = document.getElementById("showInviteModalButton");
   refs.inviteLinkValue = document.getElementById("inviteLinkValue");
   refs.inviteShareCodeValue = document.getElementById("inviteShareCodeValue");
   refs.copyInviteLinkButton = document.getElementById("copyInviteLinkButton");
+  refs.inviteModal = document.getElementById("inviteModal");
+  refs.closeInviteModalButton = document.getElementById("closeInviteModalButton");
+  refs.dismissInviteModalButton = document.getElementById("dismissInviteModalButton");
   refs.pollTabs = document.querySelectorAll("[data-poll-status]");
   refs.createdOnlyToggle = document.getElementById("createdOnlyToggle");
   refs.pollsList = document.getElementById("pollsList");
@@ -395,7 +398,6 @@ export const setFormFeedback = (message = "", tone = "info") => {
 };
 
 export const setInviteLinkDetails = ({ link = "", shareCode = "" } = {}) => {
-  if (!refs.inviteLinkCard) return;
   const safeLink = typeof link === "string" ? link.trim() : "";
   const safeCode = typeof shareCode === "string" ? shareCode.trim() : "";
   if (refs.inviteLinkValue) {
@@ -407,7 +409,6 @@ export const setInviteLinkDetails = ({ link = "", shareCode = "" } = {}) => {
   if (refs.copyInviteLinkButton) {
     refs.copyInviteLinkButton.disabled = !safeLink;
   }
-  refs.inviteLinkCard.hidden = !safeLink;
 };
 
 export const setInviteCopyButtonState = (state = "idle") => {
@@ -415,6 +416,21 @@ export const setInviteCopyButtonState = (state = "idle") => {
   const label =
     state === "copied" ? INVITE_COPY_LABELS.copied : INVITE_COPY_LABELS.idle;
   refs.copyInviteLinkButton.textContent = label;
+};
+
+export const setInviteLinkButtonVisible = (visible) => {
+  if (refs.showInviteModalButton) {
+    refs.showInviteModalButton.hidden = !visible;
+  }
+};
+
+export const toggleInviteModal = (open) => {
+  if (refs.modalScrim) {
+    refs.modalScrim.hidden = !open;
+  }
+  if (refs.inviteModal) {
+    refs.inviteModal.hidden = !open;
+  }
 };
 
 export const setJoinFeedback = (message = "", tone = "info") => {

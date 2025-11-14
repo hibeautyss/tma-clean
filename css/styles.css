@@ -263,23 +263,6 @@ textarea {
   color: var(--success);
 }
 
-.invite-link-card {
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.invite-link-header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .invite-link-subtitle {
   font-size: 13px;
   color: var(--text-secondary);

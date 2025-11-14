@@ -54,6 +54,8 @@ import {
   setTelegramUserIdentity,
   setInviteLinkDetails,
   setInviteCopyButtonState,
+  toggleInviteModal,
+  setInviteLinkButtonVisible,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -160,23 +162,27 @@ const resetInviteLinkDetails = () => {
   inviteCopyResetTimer = null;
   setInviteLinkDetails({ link: "", shareCode: "" });
   setInviteCopyButtonState("idle");
+  toggleInviteModal(false);
+  setInviteLinkButtonVisible(false);
 };
 
 const showInviteLinkForShareCode = (shareCode) => {
   const safeCode = sanitizeShareCode(shareCode);
   if (!safeCode) {
     resetInviteLinkDetails();
-    return;
+    return false;
   }
   const inviteLink = buildInviteLink(safeCode);
   latestInviteLink = inviteLink;
   setInviteLinkDetails({ link: inviteLink, shareCode: safeCode });
   setInviteCopyButtonState("idle");
+  setInviteLinkButtonVisible(Boolean(inviteLink));
   if (!inviteLink && !BOT_USERNAME) {
     console.warn(
       "No Telegram bot username configured. Set data-bot-username on <body> to enable invite links."
     );
   }
+  return Boolean(inviteLink);
 };
 
 const copyToClipboard = async (text) => {
@@ -211,6 +217,17 @@ const handleCopyInviteLink = async () => {
   }
   clearTimeout(inviteCopyResetTimer);
   inviteCopyResetTimer = setTimeout(() => setInviteCopyButtonState("idle"), INVITE_COPY_RESET_MS);
+};
+
+const handleCloseInviteModal = () => {
+  toggleInviteModal(false);
+};
+
+const handleShowInviteModal = () => {
+  if (latestInviteLink) {
+    setInviteCopyButtonState("idle");
+    toggleInviteModal(true);
+  }
 };
 
 const formatTimezoneDisplay = (zone) => {
@@ -836,6 +853,9 @@ const setEditOptionsModalState = (open) => {
 
 const isEditOptionsModalOpen = () =>
   Boolean(refs.editOptionsModal && !refs.editOptionsModal.hidden);
+
+const isInviteModalOpen = () =>
+  Boolean(refs.inviteModal && !refs.inviteModal.hidden);
 
 const clampEditorMinute = (value, max = TIME_CONFIG.minutesInDay) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -1712,7 +1732,10 @@ const handleCreatePoll = async () => {
       telegramUser: state.telegramUser,
     });
     const shareCode = sanitizeShareCode(poll.share_code ?? "");
-    showInviteLinkForShareCode(shareCode);
+    const hasInviteLink = showInviteLinkForShareCode(shareCode);
+    if (hasInviteLink) {
+      toggleInviteModal(true);
+    }
     setFormFeedback(
       `Poll created! Invite link ready below (share code ${shareCode}).`,
       "success"
@@ -1749,6 +1772,10 @@ const handleDocumentClick = (event) => {
 
 const handleDocumentKeydown = (event) => {
   if (event.key !== "Escape") return;
+  if (isInviteModalOpen()) {
+    handleCloseInviteModal();
+    return;
+  }
   if (isTimezonePopoverVisible()) {
     setTimezonePopoverVisible(false);
   }
@@ -1811,6 +1838,9 @@ const attachEventHandlers = () => {
     btn.addEventListener("click", handleEditMonthNav)
   );
   refs.copyInviteLinkButton?.addEventListener("click", handleCopyInviteLink);
+  refs.closeInviteModalButton?.addEventListener("click", handleCloseInviteModal);
+  refs.dismissInviteModalButton?.addEventListener("click", handleCloseInviteModal);
+  refs.showInviteModalButton?.addEventListener("click", handleShowInviteModal);
   wirePressAnimation(refs.createPollButton);
   wirePressAnimation(refs.joinPollButton);
   wirePressAnimation(refs.continueVoteButton);
@@ -1818,6 +1848,7 @@ const attachEventHandlers = () => {
   wirePressAnimation(refs.saveEditDetailsButton);
   wirePressAnimation(refs.saveEditOptionsButton);
   wirePressAnimation(refs.copyInviteLinkButton);
+  wirePressAnimation(refs.showInviteModalButton);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };
