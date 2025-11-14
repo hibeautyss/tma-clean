@@ -51,7 +51,6 @@ import {
   toggleEditOptionsModal,
   setEditOptionsTimezoneLabel,
   setPollStatusActions,
-  setTelegramUserIdentity,
   setInviteLinkDetails,
   setInviteCopyButtonState,
   toggleInviteModal,
@@ -266,18 +265,6 @@ const formatTelegramDisplayName = (user) => {
   return "Telegram user";
 };
 
-const buildTelegramMeta = (user) => {
-  if (!user) return "";
-  const meta = [];
-  if (user.username) {
-    meta.push(`@${user.username}`);
-  }
-  if (user.id) {
-    meta.push(`ID ${user.id}`);
-  }
-  return meta.join(" | ");
-};
-
 let refs = {};
 let saveTimer = null;
 const CREATE_LABEL_DEFAULT = "Create Poll";
@@ -297,18 +284,6 @@ const syncTelegramBackButtonVisibility = (screen = getState().screen) => {
   const visible = shouldShowTelegramBackButton(screen);
   setTelegramBackButtonVisible(visible);
   return visible;
-};
-
-const syncTelegramIdentity = () => {
-  const user = getState().telegramUser;
-  if (!user) {
-    setTelegramUserIdentity(null);
-    return;
-  }
-  setTelegramUserIdentity({
-    name: formatTelegramDisplayName(user),
-    meta: buildTelegramMeta(user),
-  });
 };
 
 const POLL_STATUSES = ["live", "paused", "finished"];
@@ -1955,7 +1930,6 @@ const bootstrap = async () => {
     refs.createPollButton.textContent = CREATE_LABEL_DEFAULT;
   }
   await hydrateState();
-  syncTelegramIdentity();
   const inviteStatus = await tryHandleStartParamInvite();
   const restoreStatus =
     inviteStatus === "success" ? "handled" : await restoreActivePollIfNeeded();
