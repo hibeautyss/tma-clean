@@ -10,6 +10,11 @@
   --danger: #f97066;
   --success: #40c18c;
   --shadow: 0 20px 80px rgba(3, 7, 18, 0.45);
+  --app-background: radial-gradient(
+    circle at top,
+    rgba(124, 93, 255, 0.35),
+    rgba(3, 7, 18, 0.95)
+  );
   color-scheme: dark;
 }
 
@@ -22,7 +27,7 @@
 body {
   margin: 0;
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  background: radial-gradient(circle at top, rgba(124, 93, 255, 0.35), rgba(3, 7, 18, 0.95));
+  background: var(--app-background);
   color: var(--text-primary);
   min-height: 100vh;
 }
