@@ -1177,6 +1177,14 @@ textarea {
   flex: 1;
 }
 
+.poll-finished-notice {
+  width: 100%;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
 .comment-list {
   list-style: none;
   padding: 0;

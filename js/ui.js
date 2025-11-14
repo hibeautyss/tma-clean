@@ -116,6 +116,7 @@ export const initUI = () => {
   refs.participantCount = document.getElementById("participantCount");
   refs.pollGrid = document.getElementById("pollGrid");
   refs.voteComment = document.getElementById("voteComment");
+  refs.pollFinishedNotice = document.getElementById("pollFinishedNotice");
   refs.voteFeedback = document.getElementById("voteFeedback");
   refs.resetVoteButton = document.getElementById("resetVoteButton");
   refs.continueVoteButton = document.getElementById("continueVoteButton");
@@ -493,6 +494,12 @@ export const setVoteFeedbackMessage = (message = "", tone = "info") => {
   refs.voteFeedback.textContent = message ?? "";
   refs.voteFeedback.classList.toggle("is-error", tone === "error");
   refs.voteFeedback.classList.toggle("is-success", tone === "success");
+};
+
+export const setPollClosedNotice = (visible, message = "This poll is finished.") => {
+  if (!refs.pollFinishedNotice) return;
+  refs.pollFinishedNotice.textContent = message ?? "This poll is finished.";
+  refs.pollFinishedNotice.hidden = !visible;
 };
 
 export const setContinueButtonEnabled = (enabled) => {

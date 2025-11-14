@@ -37,6 +37,7 @@ import {
   renderCommentList,
   setVoteCommentValue,
   setVoteFeedbackMessage,
+  setPollClosedNotice,
   setVoteNameValue,
   toggleNameModal,
   setContinueButtonEnabled,
@@ -465,6 +466,7 @@ const clearActivePollState = () => {
     isUpdatingPollStatus: false,
   });
   syncPollStatusActions();
+  setPollClosedNotice(false);
 };
 
 const renderPollSection = () => {
@@ -650,6 +652,7 @@ const renderPollDetail = () => {
   const poll = getState().activePoll;
   if (!poll) {
     syncPollStatusActions();
+    setPollClosedNotice(false);
     return;
   }
   const participants = getState().activePollVotes ?? [];
@@ -681,6 +684,7 @@ const renderPollDetail = () => {
     .map((participant) => ({ name: participant.name, body: participant.comment }));
   renderCommentList(comments);
   setVoteCommentValue(getState().voteComment ?? "");
+  setPollClosedNotice(pollClosed);
   setContinueButtonEnabled(!readOnly && hasSelections);
 };
 
