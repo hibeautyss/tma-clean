@@ -25,6 +25,23 @@ const formatDuration = (minutes) => {
   return `${mins}m`;
 };
 
+const normalizeStatusValue = (status) => {
+  const value = typeof status === "string" ? status.toLowerCase() : "";
+  return ["live", "paused", "finished"].includes(value) ? value : "live";
+};
+
+const formatStatusLabel = (status) => {
+  const normalized = normalizeStatusValue(status);
+  switch (normalized) {
+    case "finished":
+      return "Finished";
+    case "paused":
+      return "Paused";
+    default:
+      return "Live";
+  }
+};
+
 export const setScreenVisibility = (screen) => {
   if (refs.dashboardView) {
     refs.dashboardView.hidden = screen !== "dashboard";
@@ -82,6 +99,8 @@ export const initUI = () => {
   refs.manageMenu = document.getElementById("manageMenu");
   refs.manageEditDetails = document.getElementById("manageEditDetails");
   refs.manageEditOptions = document.getElementById("manageEditOptions");
+  refs.finishPollButton = document.getElementById("finishPollButton");
+  refs.reopenPollButton = document.getElementById("reopenPollButton");
   refs.pollOptionCount = document.getElementById("pollOptionCount");
   refs.participantCount = document.getElementById("participantCount");
   refs.pollGrid = document.getElementById("pollGrid");
@@ -361,7 +380,10 @@ const buildPollCard = (poll, handlers = {}) => {
   card.setAttribute("role", "button");
   card.dataset.pollId = poll.id ?? "";
   card.dataset.shareCode = poll.share_code ?? "";
-  const statusPill = `<span class="status-pill">${poll.status ?? "live"}</span>`;
+  const normalizedStatus = normalizeStatusValue(poll.status);
+  const statusPill = `<span class="status-pill status-${normalizedStatus}">${formatStatusLabel(
+    normalizedStatus
+  )}</span>`;
   const manageButton =
     poll.relation === "created"
       ? '<button type="button" class="manage-btn" aria-label="Manage poll">Manage</button>'
@@ -440,6 +462,20 @@ export const setManageMenuVisibility = (visible) => {
   }
 };
 
+export const setPollStatusActions = ({ status, canManage, isWorking } = {}) => {
+  const normalized = normalizeStatusValue(status);
+  const canFinish = Boolean(canManage) && normalized !== "finished";
+  const canReopen = Boolean(canManage) && normalized === "finished";
+  if (refs.finishPollButton) {
+    refs.finishPollButton.hidden = !canFinish;
+    refs.finishPollButton.disabled = !canFinish || Boolean(isWorking);
+  }
+  if (refs.reopenPollButton) {
+    refs.reopenPollButton.hidden = !canReopen;
+    refs.reopenPollButton.disabled = !canReopen || Boolean(isWorking);
+  }
+};
+
 export const renderPollSummary = (poll = {}, participantCount = 0) => {
   if (refs.pollTitle) refs.pollTitle.textContent = poll.title ?? "Untitled poll";
   if (refs.pollDescription) {
@@ -461,7 +497,9 @@ export const renderPollSummary = (poll = {}, participantCount = 0) => {
     }
   }
   if (refs.pollStatusBadge) {
-    refs.pollStatusBadge.textContent = poll.status ?? "Live";
+    const normalized = normalizeStatusValue(poll.status);
+    refs.pollStatusBadge.textContent = formatStatusLabel(normalized);
+    refs.pollStatusBadge.dataset.status = normalized;
   }
   if (refs.pollManageButton) {
     const canManage = Boolean(poll.canManage);

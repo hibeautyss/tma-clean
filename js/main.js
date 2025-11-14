@@ -7,6 +7,7 @@ import {
   submitVote,
   updatePollDetails,
   updatePollOptions,
+  updatePollStatus,
 } from "./api.js";
 import { getState, updateState } from "./state.js";
 import {
@@ -43,6 +44,7 @@ import {
   setEditOptionsSaving,
   toggleEditOptionsModal,
   setEditOptionsTimezoneLabel,
+  setPollStatusActions,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -162,6 +164,14 @@ const hasTrackedVoteForPoll = (pollData) => {
 
 const normalizeStatus = (status) => (POLL_STATUSES.includes(status) ? status : POLL_STATUSES[0]);
 
+const isPollFinishedState = (poll) => normalizeStatus(poll?.status) === "finished";
+
+const isVotingLocked = () => {
+  const poll = getState().activePoll;
+  if (!poll) return false;
+  return isPollFinishedState(poll) || Boolean(getState().hasSubmittedVote);
+};
+
 const getPollFilters = () => {
   const filters = getState().pollFilters ?? {};
   return {
@@ -208,6 +218,7 @@ const dedupePollHistory = (entries = []) => {
       ...existing,
       relation,
       timestamp,
+      status: normalizeStatus(entry.status ?? existing.status),
     };
   });
   return cleaned;
@@ -250,7 +261,9 @@ const clearActivePollState = () => {
     canManageActivePoll: false,
     manageMenuOpen: false,
     activePollRelation: "joined",
+    isUpdatingPollStatus: false,
   });
+  syncPollStatusActions();
 };
 
 const renderPollSection = () => {
@@ -305,12 +318,25 @@ const updatePollHistoryDetails = (poll) => {
     if (entry.id !== poll.id) {
       return entry;
     }
-    const nextTitle = poll.title ?? entry.title;
-    if (entry.title === nextTitle) {
+    const next = {
+      ...entry,
+      title: poll.title ?? entry.title,
+      status: normalizeStatus(poll.status ?? entry.status),
+    };
+    const timestamp =
+      poll.timestamp ?? poll.updated_at ?? poll.created_at ?? entry.timestamp;
+    if (timestamp) {
+      next.timestamp = timestamp;
+    }
+    if (
+      next.title === entry.title &&
+      next.status === entry.status &&
+      next.timestamp === entry.timestamp
+    ) {
       return entry;
     }
     changed = true;
-    return { ...entry, title: nextTitle };
+    return next;
   });
   if (!changed) return;
   updateState({ pollHistory: patched });
@@ -377,7 +403,7 @@ const normalizePollData = (poll) => {
     }
     return dateA - dateB;
   });
-  return { ...poll, poll_options: options };
+  return { ...poll, poll_options: options, status: normalizeStatus(poll.status) };
 };
 
 const mapVotesToParticipants = (votes = []) =>
@@ -420,10 +446,14 @@ const getDefaultParticipantName = () => {
 
 const renderPollDetail = () => {
   const poll = getState().activePoll;
-  if (!poll) return;
+  if (!poll) {
+    syncPollStatusActions();
+    return;
+  }
   const participants = getState().activePollVotes ?? [];
   const draft = getState().voteDraft ?? {};
-  const readOnly = Boolean(getState().hasSubmittedVote);
+  const pollClosed = isPollFinishedState(poll);
+  const readOnly = pollClosed || Boolean(getState().hasSubmittedVote);
   const canManage = Boolean(getState().canManageActivePoll);
   const manageMenuOpen = Boolean(getState().manageMenuOpen && canManage);
   const hasSelections = hasPositiveSelection(draft);
@@ -436,6 +466,7 @@ const renderPollDetail = () => {
     participants.length
   );
   setManageMenuVisibility(manageMenuOpen);
+  syncPollStatusActions();
   renderPollGrid({
     options: poll.poll_options,
     participants,
@@ -451,11 +482,21 @@ const renderPollDetail = () => {
   setContinueButtonEnabled(!readOnly && hasSelections);
 };
 
+function syncPollStatusActions() {
+  const poll = getState().activePoll;
+  setPollStatusActions({
+    status: poll?.status ?? null,
+    canManage: getState().canManageActivePoll,
+    isWorking: getState().isUpdatingPollStatus,
+  });
+}
+
 const setManageMenuState = (open) => {
   const canManage = Boolean(getState().canManageActivePoll);
   const nextOpen = open && canManage;
   updateState({ manageMenuOpen: nextOpen });
   setManageMenuVisibility(nextOpen);
+  syncPollStatusActions();
 };
 
 const closeManageMenu = () => setManageMenuState(false);
@@ -464,6 +505,42 @@ const handleActivePollManage = () => {
   if (!getState().canManageActivePoll) return;
   setManageMenuState(!getState().manageMenuOpen);
 };
+
+const changePollStatus = async (nextStatus) => {
+  const poll = getState().activePoll;
+  if (
+    !poll?.id ||
+    !getState().canManageActivePoll ||
+    getState().isUpdatingPollStatus ||
+    normalizeStatus(poll.status) === nextStatus
+  ) {
+    setManageMenuState(false);
+    return;
+  }
+  updateState({ isUpdatingPollStatus: true });
+  setManageMenuState(false);
+  syncPollStatusActions();
+  setVoteFeedbackMessage("Updating poll status...", "info");
+  try {
+    await updatePollStatus({ pollId: poll.id, status: nextStatus });
+    await refreshActivePoll();
+    if (nextStatus === "finished") {
+      setVoteFeedbackMessage("Poll finished. Voting is closed.", "success");
+    } else {
+      setVoteFeedbackMessage("Poll reopened. Participants can vote again.", "success");
+    }
+  } catch (error) {
+    console.error("Failed to update poll status", error);
+    setVoteFeedbackMessage(error.message ?? "Unable to update poll status. Try again.", "error");
+  } finally {
+    updateState({ isUpdatingPollStatus: false });
+    syncPollStatusActions();
+  }
+};
+
+const handleFinishPoll = () => changePollStatus("finished");
+
+const handleReopenPoll = () => changePollStatus("live");
 
 const isEditDetailsModalOpen = () =>
   Boolean(refs.editDetailsModal && !refs.editDetailsModal.hidden);
@@ -874,6 +951,7 @@ const applyPollDetail = (pollData, relation = "joined") => {
     activePollRelation: derivedRelation,
     canManageActivePoll: canManage,
     manageMenuOpen: false,
+    isUpdatingPollStatus: false,
   });
   setVoteCommentValue("");
   if (alreadySubmitted) {
@@ -1164,7 +1242,7 @@ const handleJoinPoll = async () => {
 };
 
 const handleDraftSlotToggle = (optionId) => {
-  if (getState().hasSubmittedVote) return;
+  if (isVotingLocked()) return;
   const poll = getState().activePoll;
   if (!poll || !optionId) return;
   const currentDraft = { ...(getState().voteDraft ?? {}) };
@@ -1175,14 +1253,14 @@ const handleDraftSlotToggle = (optionId) => {
 };
 
 const handleVoteCommentChange = (value) => {
-  if (getState().hasSubmittedVote) return;
+  if (isVotingLocked()) return;
   updateState({ voteComment: value });
   setVoteFeedbackMessage("");
 };
 
 const handleResetVote = () => {
   const poll = getState().activePoll;
-  if (!poll) return;
+  if (!poll || isVotingLocked()) return;
   updateState({
     voteDraft: buildInitialDraft(poll),
     voteComment: "",
@@ -1205,6 +1283,11 @@ const closeNameModal = () => {
 };
 
 const handleContinueVote = () => {
+  const poll = getState().activePoll;
+  if (isPollFinishedState(poll)) {
+    setVoteFeedbackMessage("This poll is finished. Voting is closed.", "error");
+    return;
+  }
   if (getState().hasSubmittedVote) return;
   const draft = getState().voteDraft ?? {};
   if (!hasPositiveSelection(draft)) {
@@ -1241,6 +1324,8 @@ const refreshActivePoll = async () => {
       canManageActivePoll: canManage,
       manageMenuOpen: canManage ? previousMenuState : false,
     });
+    updatePollHistoryDetails({ ...normalized, created_at: latest.created_at });
+    syncPollStatusActions();
     if (alreadySubmitted && !previouslyLocked) {
       setVoteFeedbackMessage("You already submitted your availability for this poll.", "success");
     }
@@ -1252,6 +1337,10 @@ const refreshActivePoll = async () => {
 
 const handleSubmitVote = async () => {
   const poll = getState().activePoll;
+  if (isPollFinishedState(poll)) {
+    setVoteFeedbackMessage("This poll is finished. Voting is closed.", "error");
+    return;
+  }
   if (!poll || getState().isVoting || getState().hasSubmittedVote) return;
   const draft = getState().voteDraft ?? {};
   if (!hasPositiveSelection(draft)) {
@@ -1487,6 +1576,8 @@ const attachEventHandlers = () => {
   refs.backToDashboardFromPoll?.addEventListener("click", handleBackToDashboardFromPoll);
   refs.manageEditDetails?.addEventListener("click", handleManageEditDetails);
   refs.manageEditOptions?.addEventListener("click", handleManageEditOptions);
+  refs.finishPollButton?.addEventListener("click", handleFinishPoll);
+  refs.reopenPollButton?.addEventListener("click", handleReopenPoll);
   refs.modalBackButton?.addEventListener("click", closeNameModal);
   refs.closeNameModal?.addEventListener("click", closeNameModal);
   refs.submitVoteButton?.addEventListener("click", handleSubmitVote);

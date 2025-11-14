@@ -15,9 +15,19 @@ create table if not exists public.polls (
     location text,
     timezone text not null default 'UTC',
     specify_times boolean not null default false,
+    status text not null default 'live',
     creator jsonb,
     created_at timestamptz not null default timezone('utc'::text, now())
 );
+
+alter table public.polls
+    add column if not exists status text not null default 'live';
+
+alter table public.polls
+    drop constraint if exists poll_status_valid;
+
+alter table public.polls
+    add constraint poll_status_valid check (status in ('live', 'paused', 'finished'));
 
 create table if not exists public.poll_options (
     id uuid primary key default gen_random_uuid(),
@@ -56,7 +66,7 @@ create table if not exists public.vote_selections (
 -- Permissions --------------------------------------------------------------
 grant usage on schema public to anon, authenticated;
 grant select, insert, update on public.polls to anon, authenticated;
-grant select, insert on public.poll_options to anon, authenticated;
+grant select, insert, update, delete on public.poll_options to anon, authenticated;
 grant select, insert on public.votes to anon, authenticated;
 grant select, insert on public.vote_selections to anon, authenticated;
 
@@ -87,6 +97,15 @@ drop policy if exists "anon_insert_poll_options" on public.poll_options;
 create policy "anon_insert_poll_options" on public.poll_options
     for insert with check (true);
 
+drop policy if exists "anon_update_poll_options" on public.poll_options;
+create policy "anon_update_poll_options" on public.poll_options
+    for update using (true)
+    with check (true);
+
+drop policy if exists "anon_delete_poll_options" on public.poll_options;
+create policy "anon_delete_poll_options" on public.poll_options
+    for delete using (true);
+
 drop policy if exists "anon_select_votes" on public.votes;
 create policy "anon_select_votes" on public.votes
     for select using (true);
@@ -103,8 +122,9 @@ drop policy if exists "anon_insert_vote_selections" on public.vote_selections;
 create policy "anon_insert_vote_selections" on public.vote_selections
     for insert with check (true);
 
--- Utility view to fetch polls with options in one round trip (optional)
-create or replace view public.poll_with_options as
+drop view if exists public.poll_with_options cascade;
+
+create view public.poll_with_options as
 select
     p.*,
     json_agg(

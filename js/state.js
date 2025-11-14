@@ -16,6 +16,7 @@ const state = {
   specifyTimesEnabled: true,
   isSubmitting: false,
   isUpdatingPoll: false,
+  isUpdatingPollStatus: false,
   timezone: "Europe/Moscow",
   timezoneSearch: "",
   today: initialToday,

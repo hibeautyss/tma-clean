@@ -944,6 +944,12 @@ textarea {
   text-transform: capitalize;
 }
 
+.status-pill.status-finished,
+.status-pill[data-status="finished"] {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
 .poll-legends {
   display: flex;
   gap: 16px;

@@ -2,6 +2,7 @@ const STORAGE_PREFIX = "planner-state";
 const SUPABASE_URL = "https://dkphckosxmwtrhajkzog.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_KBnOAUzowc5hKJojPMN9Tg_Xzns04Zs";
 const SUPABASE_REST_URL = `${SUPABASE_URL}/rest/v1`;
+const POLL_STATUSES = ["live", "paused", "finished"];
 
 const buildKey = (telegramId) => `${STORAGE_PREFIX}:${telegramId ?? "guest"}`;
 
@@ -43,6 +44,11 @@ const baseHeaders = Object.freeze({
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
 });
+
+const normalizeStatusValue = (status) => {
+  const value = typeof status === "string" ? status.toLowerCase() : "";
+  return POLL_STATUSES.includes(value) ? value : POLL_STATUSES[0];
+};
 
 const clampMinutes = (value) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -247,7 +253,7 @@ export const updatePollDetails = async ({ pollId, title, location, description }
   const rows = await supabaseRequest(
     buildRestPath("/polls", {
       id: `eq.${pollId}`,
-      select: "id,title,description,location,timezone,specify_times",
+      select: "id,title,description,location,timezone,specify_times,status",
     }),
     {
       method: "PATCH",
@@ -260,6 +266,29 @@ export const updatePollDetails = async ({ pollId, title, location, description }
     return updated;
   }
   return { id: pollId, ...payload };
+};
+
+export const updatePollStatus = async ({ pollId, status }) => {
+  if (!pollId) {
+    throw new Error("pollId is required.");
+  }
+  const normalizedStatus = normalizeStatusValue(status);
+  const rows = await supabaseRequest(
+    buildRestPath("/polls", {
+      id: `eq.${pollId}`,
+      select: "id,title,description,location,timezone,specify_times,status,share_code,creator,created_at",
+    }),
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ status: normalizedStatus }),
+    }
+  );
+  const updated = Array.isArray(rows) ? rows[0] : rows;
+  if (!updated) {
+    throw new Error("Supabase did not return the updated poll.");
+  }
+  return updated;
 };
 
 export const updatePollOptions = async ({
@@ -362,7 +391,7 @@ export const updatePollOptions = async ({
 export const fetchPoll = async ({ pollId, shareCode }) => {
   const params = {
     select:
-      "id,share_code,title,description,location,timezone,specify_times,created_at,poll_options(id,option_date,start_minute,end_minute,created_at)",
+      "id,share_code,title,description,location,timezone,specify_times,status,created_at,poll_options(id,option_date,start_minute,end_minute,created_at)",
     limit: "1",
   };
   if (pollId) {
@@ -443,7 +472,7 @@ export const submitVote = async ({ pollId, voterName, voterContact, selections }
 export const fetchPollDetail = async ({ pollId, shareCode }) => {
   const params = {
     select:
-      "id,title,description,location,timezone,specify_times,share_code,creator,created_at,poll_options(id,option_date,start_minute,end_minute,created_at),votes(id,voter_name,voter_contact,created_at,vote_selections(poll_option_id,availability))",
+      "id,title,description,location,timezone,specify_times,status,share_code,creator,created_at,poll_options(id,option_date,start_minute,end_minute,created_at),votes(id,voter_name,voter_contact,created_at,vote_selections(poll_option_id,availability))",
     limit: "1",
   };
   if (pollId) {
