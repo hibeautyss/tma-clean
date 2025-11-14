@@ -159,6 +159,7 @@ const getStartParamValue = () => {
     }
   }
   cachedStartParam = (initParam || queryParam || "").trim();
+  console.log("startParam:", cachedStartParam || null);
   return cachedStartParam;
 };
 
@@ -1898,8 +1899,10 @@ const tryHandleStartParamInvite = async () => {
   }
   const shareCode = parseInviteStartParam(param);
   if (!shareCode) {
+    console.warn("startParam present but no valid share code could be parsed:", param);
     return "skipped";
   }
+  console.info("Opening poll from startParam share code:", shareCode);
   try {
     setJoinFeedback("Loading invite...", "info");
     const poll = await fetchPollDetail({ shareCode });
@@ -1922,7 +1925,10 @@ const persistState = () => {
 };
 
 const bootstrap = async () => {
-  initTelegram();
+  const telegram = initTelegram();
+  if (!telegram) {
+    console.info("Telegram WebApp context not detected. Running in standalone mode.");
+  }
   refs = initUI();
   resetInviteLinkDetails();
   setTelegramBackButtonHandler(handleTelegramBackButton);

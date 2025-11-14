@@ -71,6 +71,7 @@ const expandTelegramWebView = (webApp) => {
 export const initTelegram = () => {
   telegramInstance = window.Telegram?.WebApp ?? null;
   if (!telegramInstance) {
+    console.warn("Telegram WebApp SDK not detected. Running without Telegram context.");
     return null;
   }
   telegramInstance.ready?.();
