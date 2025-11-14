@@ -905,7 +905,7 @@ textarea {
 
 .poll-location {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
   margin: 8px 0 0;
   font-size: 13px;
