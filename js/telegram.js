@@ -1,48 +1,14 @@
 let telegramInstance = null;
 let backButtonHandler = null;
 let isBackButtonBound = false;
-let isThemeBound = false;
 let isViewportBound = false;
-
-const TELEGRAM_THEME_VARS = {
-  "--bg": ["bg_color", "secondary_bg_color"],
-  "--app-background": ["bg_color"],
-  "--surface": ["secondary_bg_color", "section_bg_color"],
-  "--surface-alt": ["secondary_bg_color", "section_bg_color"],
-  "--text-primary": ["text_color"],
-  "--text-secondary": ["hint_color", "subtitle_text_color"],
-  "--accent": ["button_color", "link_color"],
-  "--accent-strong": ["button_color"],
-  "--border": ["section_separator_color"],
-  "--danger": ["destructive_text_color"],
-  "--success": ["link_color"],
-};
 
 const numberOrNull = (value) => (typeof value === "number" && !Number.isNaN(value) ? value : null);
 
-const applyTelegramTheme = (themeParams = {}, colorScheme) => {
+const enforceDarkTheme = () => {
   const root = document.documentElement;
   if (!root) return;
-
-  if (colorScheme === "light") {
-    // Light theme is disabled, so reset to the default dark palette.
-    Object.keys(TELEGRAM_THEME_VARS).forEach((cssVar) => root.style.removeProperty(cssVar));
-    root.style.setProperty("color-scheme", "dark");
-    return;
-  }
-
-  Object.entries(TELEGRAM_THEME_VARS).forEach(([cssVar, paramKeys]) => {
-    const list = Array.isArray(paramKeys) ? paramKeys : [paramKeys];
-    const value = list.map((key) => themeParams?.[key]).find((entry) => typeof entry === "string" && entry.length);
-    if (value) {
-      root.style.setProperty(cssVar, value);
-    }
-  });
-  if (colorScheme) {
-    root.style.setProperty("color-scheme", colorScheme);
-  } else if (themeParams?.text_color) {
-    root.style.setProperty("color-scheme", "dark");
-  }
+  root.style.setProperty("color-scheme", "dark");
 };
 
 const applyViewportMetrics = (payload = {}) => {
@@ -78,12 +44,8 @@ const bindBackButton = (webApp) => {
   isBackButtonBound = true;
 };
 
-const bindThemeParams = (webApp) => {
-  if (!webApp) return;
-  applyTelegramTheme(webApp.themeParams, webApp.colorScheme);
-  if (isThemeBound || !webApp.onEvent) return;
-  webApp.onEvent("themeChanged", () => applyTelegramTheme(webApp.themeParams, webApp.colorScheme));
-  isThemeBound = true;
+const bindThemeParams = () => {
+  enforceDarkTheme();
 };
 
 const bindViewport = (webApp) => {
@@ -114,7 +76,7 @@ export const initTelegram = () => {
   telegramInstance.ready?.();
   expandTelegramWebView(telegramInstance);
   telegramInstance.setHeaderColor?.("secondary_bg_color");
-  bindThemeParams(telegramInstance);
+  bindThemeParams();
   bindViewport(telegramInstance);
   bindBackButton(telegramInstance);
   return telegramInstance;
