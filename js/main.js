@@ -64,7 +64,8 @@ const TIME_CONFIG = {
   defaultSlot: { start: 12 * 60, end: 13 * 60 },
 };
 const DEFAULT_DURATION = TIME_CONFIG.defaultSlot.end - TIME_CONFIG.defaultSlot.start;
-const INVITE_PARAM_PREFIX = "poll:";
+const INVITE_PARAM_PREFIX = "poll_";
+const LEGACY_INVITE_PARAM_PREFIX = "poll:";
 const INVITE_COPY_RESET_MS = 2000;
 
 const NORMALIZE = (value) =>
@@ -128,11 +129,17 @@ const parseInviteStartParam = (raw = "") => {
   } catch {
     decoded = raw;
   }
-  const prefix = INVITE_PARAM_PREFIX.toLowerCase();
-  const normalized = decoded.toLowerCase().startsWith(prefix)
-    ? decoded.slice(INVITE_PARAM_PREFIX.length)
-    : decoded;
-  return sanitizeShareCode(normalized);
+  const prefixes = [INVITE_PARAM_PREFIX, LEGACY_INVITE_PARAM_PREFIX]
+    .filter(Boolean)
+    .map((prefix) => prefix.toLowerCase());
+  let stripped = decoded;
+  for (const prefix of prefixes) {
+    if (prefix && stripped.toLowerCase().startsWith(prefix)) {
+      stripped = stripped.slice(prefix.length);
+      break;
+    }
+  }
+  return sanitizeShareCode(stripped);
 };
 
 let cachedStartParam = null;
