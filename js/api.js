@@ -225,16 +225,22 @@ export const updatePollDetails = async ({ pollId, title, location, description }
     location: safeTrim(location),
     description: safeTrim(description),
   };
-  const rows = await supabaseRequest(buildRestPath("/polls", { id: `eq.${pollId}` }), {
-    method: "PATCH",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify(payload),
-  });
+  const rows = await supabaseRequest(
+    buildRestPath("/polls", {
+      id: `eq.${pollId}`,
+      select: "id,title,description,location,timezone,specify_times",
+    }),
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(payload),
+    }
+  );
   const updated = Array.isArray(rows) ? rows[0] : rows;
-  if (!updated) {
-    throw new Error("Poll update failed.");
+  if (updated) {
+    return updated;
   }
-  return updated;
+  return { id: pollId, ...payload };
 };
 
 export const updatePollOptions = async ({
@@ -273,13 +279,23 @@ export const updatePollOptions = async ({
     return payload;
   });
 
-  const sanitizedRemovals = (removedOptionIds ?? [])
-    .map((value) => Number.parseInt(value, 10))
-    .filter((value) => Number.isInteger(value));
+  const sanitizeId = (value) => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed.replace(/"/g, "") : null;
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+    return null;
+  };
+
+  const sanitizedRemovals = (removedOptionIds ?? []).map(sanitizeId).filter(Boolean);
 
   if (sanitizedRemovals.length) {
+    const quotedIds = sanitizedRemovals.map((value) => `"${value}"`).join(",");
     await supabaseRequest(
-      buildRestPath("/poll_options", { id: `in.(${sanitizedRemovals.join(",")})` }),
+      buildRestPath("/poll_options", { id: `in.(${quotedIds})` }),
       {
         method: "DELETE",
       }

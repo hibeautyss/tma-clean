@@ -566,14 +566,23 @@ const buildEditOptionsPayload = (draft) => {
 };
 
 const deriveRemovedOptionIds = (draft, normalizedOptions) => {
+  const toKey = (value) => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : null;
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+    return null;
+  };
   const baseline = new Set(
-    (draft?.baselineOptionIds ?? [])
-      .map((value) => Number.parseInt(value, 10))
-      .filter((value) => Number.isInteger(value))
+    (draft?.baselineOptionIds ?? []).map(toKey).filter(Boolean)
   );
   normalizedOptions.forEach((option) => {
-    if (option.id) {
-      baseline.delete(option.id);
+    const key = toKey(option.id);
+    if (key) {
+      baseline.delete(key);
     }
   });
   return Array.from(baseline);
