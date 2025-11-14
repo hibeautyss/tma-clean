@@ -1,4 +1,10 @@
-import { initTelegram, getTelegramUser } from "./telegram.js";
+import {
+  initTelegram,
+  getTelegramUser,
+  getTelegramInitData,
+  setTelegramBackButtonHandler,
+  setTelegramBackButtonVisible,
+} from "./telegram.js";
 import {
   loadUserState,
   saveUserState,
@@ -102,7 +108,7 @@ const buildTelegramMeta = (user) => {
   if (user.id) {
     meta.push(`ID ${user.id}`);
   }
-  return meta.join(" · ");
+  return meta.join(" | ");
 };
 
 let refs = {};
@@ -115,6 +121,15 @@ const getStorageId = () => getState().telegramUser?.id ?? "guest";
 const schedulePersist = () => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(persistState, 200);
+};
+
+const shouldShowTelegramBackButton = (screen) =>
+  screen === SCREENS.CREATE || screen === SCREENS.POLL;
+
+const syncTelegramBackButtonVisibility = (screen = getState().screen) => {
+  const visible = shouldShowTelegramBackButton(screen);
+  setTelegramBackButtonVisible(visible);
+  return visible;
 };
 
 const syncTelegramIdentity = () => {
@@ -427,6 +442,7 @@ const handleHistoryManage = (entry) => openPollFromHistory(entry, "created");
 const setActiveScreen = (screen) => {
   const normalized = syncScreenVisibility(screen);
   updateState({ screen: normalized });
+  syncTelegramBackButtonVisibility(normalized);
   schedulePersist();
   if (normalized === SCREENS.CREATE) {
     renderAll();
@@ -1442,6 +1458,17 @@ const handleJoinInputKeydown = (event) => {
   }
 };
 
+const handleTelegramBackButton = () => {
+  const currentScreen = getState().screen;
+  if (currentScreen === SCREENS.POLL) {
+    handleBackToDashboardFromPoll();
+    return;
+  }
+  if (currentScreen === SCREENS.CREATE) {
+    handleBackToDashboard();
+  }
+};
+
 const handleNewPollClick = () => {
   resetPlannerState();
   setFormFeedback("");
@@ -1655,6 +1682,10 @@ const hydrateState = async () => {
       `Telegram Mini App user detected: ${formatTelegramDisplayName(user)} (ID: ${user.id})`
     );
   }
+  const initData = getTelegramInitData();
+  if (initData) {
+    console.info("Telegram init data payload detected", initData);
+  }
   const savedState = await loadUserState(user?.id ?? "guest");
   if (savedState) {
     updateState(savedState);
@@ -1674,8 +1705,7 @@ const restoreActivePollIfNeeded = async () => {
   }
   const reference = normalizePollReference(getState().activePollRef);
   if (!reference) {
-    updateState({ screen: SCREENS.DASHBOARD });
-    schedulePersist();
+    setActiveScreen(SCREENS.DASHBOARD);
     return "fallback";
   }
   try {
@@ -1685,9 +1715,8 @@ const restoreActivePollIfNeeded = async () => {
     });
     if (!poll) {
       clearActivePollState();
-      updateState({ screen: SCREENS.DASHBOARD });
+      setActiveScreen(SCREENS.DASHBOARD);
       setJoinFeedback("We couldn't reload that poll. Please join it again.", "error");
-      schedulePersist();
       return "error";
     }
     applyPollDetail(poll, getState().activePollRelation ?? "joined");
@@ -1695,9 +1724,8 @@ const restoreActivePollIfNeeded = async () => {
   } catch (error) {
     console.error("Failed to restore poll from saved state", error);
     clearActivePollState();
-    updateState({ screen: SCREENS.DASHBOARD });
+    setActiveScreen(SCREENS.DASHBOARD);
     setJoinFeedback("We couldn't reload that poll. Please join it again.", "error");
-    schedulePersist();
     return "error";
   }
 };
@@ -1709,6 +1737,7 @@ const persistState = () => {
 const bootstrap = async () => {
   initTelegram();
   refs = initUI();
+  setTelegramBackButtonHandler(handleTelegramBackButton);
   if (refs.createPollButton) {
     refs.createPollButton.textContent = CREATE_LABEL_DEFAULT;
   }
@@ -1716,6 +1745,7 @@ const bootstrap = async () => {
   syncTelegramIdentity();
   const restoreStatus = await restoreActivePollIfNeeded();
   syncScreenVisibility(getState().screen);
+  syncTelegramBackButtonVisibility(getState().screen);
   if (getState().screen === SCREENS.POLL) {
     renderPollDetail();
   }
