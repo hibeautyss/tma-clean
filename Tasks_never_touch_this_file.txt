@@ -6,3 +6,4 @@
 ++ Save changes of "edit options"
 ++ "Place" is missing in the poll after creation
 ++ UI button is broken when you create a poll and add time
+When i join the poll ic reated via code, not via "my polls" i cant manage it
