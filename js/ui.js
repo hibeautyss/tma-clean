@@ -74,6 +74,8 @@ export const initUI = () => {
   refs.formFeedback = document.getElementById("formFeedback");
   refs.pollTitle = document.getElementById("pollTitle");
   refs.pollMeta = document.getElementById("pollMeta");
+  refs.pollLocation = document.getElementById("pollLocation");
+  refs.pollLocationValue = document.getElementById("pollLocationValue");
   refs.pollDescription = document.getElementById("pollDescription");
   refs.pollStatusBadge = document.getElementById("pollStatusBadge");
   refs.pollManageButton = document.getElementById("pollManageButton");
@@ -447,6 +449,16 @@ export const renderPollSummary = (poll = {}, participantCount = 0) => {
   if (refs.pollMeta) {
     const creator = poll.creator?.username || poll.creator?.firstName || poll.creator?.id || "Anonymous";
     refs.pollMeta.textContent = `by ${creator}`;
+  }
+  if (refs.pollLocation) {
+    const location = (poll.location ?? "").trim();
+    const hasLocation = Boolean(location);
+    refs.pollLocation.hidden = !hasLocation;
+    if (refs.pollLocationValue) {
+      refs.pollLocationValue.textContent = location;
+    } else {
+      refs.pollLocation.textContent = hasLocation ? location : "";
+    }
   }
   if (refs.pollStatusBadge) {
     refs.pollStatusBadge.textContent = poll.status ?? "Live";
