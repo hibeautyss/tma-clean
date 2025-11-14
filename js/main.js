@@ -239,7 +239,7 @@ const getPollFilters = () => {
 };
 
 const getPollHistory = () => (Array.isArray(getState().pollHistory) ? getState().pollHistory : []);
-const getPollHistoryKey = (entry) => entry?.id ?? entry?.share_code ?? null;
+const getPollHistoryKey = (entry) => entry?.share_code ?? entry?.id ?? null;
 const getTimestampValue = (value) => {
   if (!value) return 0;
   const parsed = new Date(value).valueOf();
