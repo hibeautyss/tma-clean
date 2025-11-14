@@ -166,6 +166,9 @@ const normalizeStatus = (status) => (POLL_STATUSES.includes(status) ? status : P
 
 const isPollFinishedState = (poll) => normalizeStatus(poll?.status) === "finished";
 
+const getLockedVotingMessage = (poll) =>
+  isPollFinishedState(poll) ? "This poll is finished." : "You already submitted your availability for this poll.";
+
 const isVotingLocked = () => {
   const poll = getState().activePoll;
   if (!poll) return false;
@@ -955,7 +958,7 @@ const applyPollDetail = (pollData, relation = "joined") => {
   });
   setVoteCommentValue("");
   if (alreadySubmitted) {
-    setVoteFeedbackMessage("You already submitted your availability for this poll.", "success");
+    setVoteFeedbackMessage(getLockedVotingMessage(normalizedPoll), "success");
   } else {
     setVoteFeedbackMessage("");
   }
@@ -1327,7 +1330,7 @@ const refreshActivePoll = async () => {
     updatePollHistoryDetails({ ...normalized, created_at: latest.created_at });
     syncPollStatusActions();
     if (alreadySubmitted && !previouslyLocked) {
-      setVoteFeedbackMessage("You already submitted your availability for this poll.", "success");
+      setVoteFeedbackMessage(getLockedVotingMessage(normalized), "success");
     }
     renderPollDetail();
   } catch (error) {
