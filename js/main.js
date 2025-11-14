@@ -1259,7 +1259,11 @@ const handleJoinInputKeydown = (event) => {
   }
 };
 
-const handleNewPollClick = () => setActiveScreen(SCREENS.CREATE);
+const handleNewPollClick = () => {
+  resetPlannerState();
+  setFormFeedback("");
+  setActiveScreen(SCREENS.CREATE);
+};
 
 const handleBackToDashboard = () => setActiveScreen(SCREENS.DASHBOARD);
 
@@ -1289,6 +1293,18 @@ const getEventDetails = () => ({
   description: refs.descriptionInput?.value ?? "",
 });
 
+const resetEventDetailsForm = () => {
+  if (refs.titleInput) {
+    refs.titleInput.value = "";
+  }
+  if (refs.locationInput) {
+    refs.locationInput.value = "";
+  }
+  if (refs.descriptionInput) {
+    refs.descriptionInput.value = "";
+  }
+};
+
 const setSubmitting = (isSubmitting) => {
   updateState({ isSubmitting });
   renderAll();
@@ -1298,13 +1314,19 @@ const setSubmitting = (isSubmitting) => {
 };
 
 const resetPlannerState = () => {
+  const today = new Date();
   updateState({
     selectedDates: new Map(),
     specifyTimesEnabled: false,
+    timezoneSearch: "",
+    today,
+    currentView: new Date(today.getFullYear(), today.getMonth(), 1),
   });
   if (refs.timeToggle) {
     refs.timeToggle.checked = false;
   }
+  setTimezoneSearchValue("");
+  resetEventDetailsForm();
   renderAll();
   persistState();
 };
