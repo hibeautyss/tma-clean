@@ -55,6 +55,9 @@ export const setScreenVisibility = (screen) => {
 };
 
 export const initUI = () => {
+  refs.telegramUserBadge = document.getElementById("telegramUserBadge");
+  refs.telegramUserName = document.getElementById("telegramUserName");
+  refs.telegramUserMeta = document.getElementById("telegramUserMeta");
   refs.dashboardView = document.getElementById("dashboardView");
   refs.createView = document.getElementById("createView");
   refs.pollView = document.getElementById("pollView");
@@ -141,6 +144,25 @@ export const initUI = () => {
   refs.saveEditOptionsButton = document.getElementById("saveEditOptionsButton");
   refs.closeEditOptionsModal = document.getElementById("closeEditOptionsModal");
   return refs;
+};
+
+export const setTelegramUserIdentity = (details) => {
+  if (
+    !refs.telegramUserBadge ||
+    !refs.telegramUserName ||
+    !refs.telegramUserMeta
+  ) {
+    return;
+  }
+  if (!details) {
+    refs.telegramUserBadge.hidden = true;
+    refs.telegramUserName.textContent = "";
+    refs.telegramUserMeta.textContent = "";
+    return;
+  }
+  refs.telegramUserName.textContent = details.name ?? "Telegram user";
+  refs.telegramUserMeta.textContent = details.meta ?? "";
+  refs.telegramUserBadge.hidden = false;
 };
 
 export const setPollTabActive = (status) => {

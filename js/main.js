@@ -45,6 +45,7 @@ import {
   toggleEditOptionsModal,
   setEditOptionsTimezoneLabel,
   setPollStatusActions,
+  setTelegramUserIdentity,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -77,6 +78,33 @@ const SCREENS = {
   POLL: "poll",
 };
 
+const formatTelegramDisplayName = (user) => {
+  if (!user) return "";
+  const nameParts = [user.first_name, user.last_name].filter(Boolean);
+  if (nameParts.length) {
+    return nameParts.join(" ");
+  }
+  if (user.username) {
+    return `@${user.username}`;
+  }
+  if (user.id) {
+    return `User ${user.id}`;
+  }
+  return "Telegram user";
+};
+
+const buildTelegramMeta = (user) => {
+  if (!user) return "";
+  const meta = [];
+  if (user.username) {
+    meta.push(`@${user.username}`);
+  }
+  if (user.id) {
+    meta.push(`ID ${user.id}`);
+  }
+  return meta.join(" · ");
+};
+
 let refs = {};
 let saveTimer = null;
 const CREATE_LABEL_DEFAULT = "Create Poll";
@@ -87,6 +115,18 @@ const getStorageId = () => getState().telegramUser?.id ?? "guest";
 const schedulePersist = () => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(persistState, 200);
+};
+
+const syncTelegramIdentity = () => {
+  const user = getState().telegramUser;
+  if (!user) {
+    setTelegramUserIdentity(null);
+    return;
+  }
+  setTelegramUserIdentity({
+    name: formatTelegramDisplayName(user),
+    meta: buildTelegramMeta(user),
+  });
 };
 
 const POLL_STATUSES = ["live", "paused", "finished"];
@@ -1611,6 +1651,9 @@ const hydrateState = async () => {
   const user = getTelegramUser();
   if (user) {
     updateState({ telegramUser: user });
+    console.info(
+      `Telegram Mini App user detected: ${formatTelegramDisplayName(user)} (ID: ${user.id})`
+    );
   }
   const savedState = await loadUserState(user?.id ?? "guest");
   if (savedState) {
@@ -1670,6 +1713,7 @@ const bootstrap = async () => {
     refs.createPollButton.textContent = CREATE_LABEL_DEFAULT;
   }
   await hydrateState();
+  syncTelegramIdentity();
   const restoreStatus = await restoreActivePollIfNeeded();
   syncScreenVisibility(getState().screen);
   if (getState().screen === SCREENS.POLL) {
