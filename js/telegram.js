@@ -23,6 +23,14 @@ const numberOrNull = (value) => (typeof value === "number" && !Number.isNaN(valu
 const applyTelegramTheme = (themeParams = {}, colorScheme) => {
   const root = document.documentElement;
   if (!root) return;
+
+  if (colorScheme === "light") {
+    // Light theme is disabled, so reset to the default dark palette.
+    Object.keys(TELEGRAM_THEME_VARS).forEach((cssVar) => root.style.removeProperty(cssVar));
+    root.style.setProperty("color-scheme", "dark");
+    return;
+  }
+
   Object.entries(TELEGRAM_THEME_VARS).forEach(([cssVar, paramKeys]) => {
     const list = Array.isArray(paramKeys) ? paramKeys : [paramKeys];
     const value = list.map((key) => themeParams?.[key]).find((entry) => typeof entry === "string" && entry.length);
