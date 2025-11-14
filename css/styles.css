@@ -263,6 +263,58 @@ textarea {
   color: var(--success);
 }
 
+.invite-link-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invite-link-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.invite-link-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.invite-link-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.invite-link-value {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface-alt);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.invite-copy-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.invite-link-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .calendar-body {
   display: flex;
   flex-direction: column;

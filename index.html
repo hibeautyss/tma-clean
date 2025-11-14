@@ -7,7 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="./css/styles.css" />
   </head>
-  <body>
+  <body data-bot-username="meetingplannerbot">
     <main class="mobile-shell">
       <div class="user-pill" id="telegramUserBadge" hidden>
         <div class="user-pill__avatar" aria-hidden="true">👤</div>
@@ -107,6 +107,19 @@
               </div>
             </form>
             <div id="formFeedback" class="form-feedback" role="status" aria-live="polite" hidden></div>
+            <div class="invite-link-card" id="inviteLinkCard" hidden>
+              <div class="invite-link-header">
+                <p class="eyebrow">Invite link</p>
+                <p class="invite-link-subtitle">Share this URL to let people open your poll directly inside Telegram.</p>
+              </div>
+              <div class="invite-link-body">
+                <code id="inviteLinkValue" class="invite-link-value" role="status" aria-live="polite"></code>
+                <button type="button" class="ghost-btn invite-copy-btn" id="copyInviteLinkButton">Copy link</button>
+              </div>
+              <p class="invite-link-meta">
+                Share code <strong id="inviteShareCodeValue"></strong> still works everywhere.
+              </p>
+            </div>
           </div>
         </section>
 

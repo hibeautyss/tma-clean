@@ -52,6 +52,8 @@ import {
   setEditOptionsTimezoneLabel,
   setPollStatusActions,
   setTelegramUserIdentity,
+  setInviteLinkDetails,
+  setInviteCopyButtonState,
 } from "./ui.js";
 
 const TIME_CONFIG = {
@@ -60,6 +62,8 @@ const TIME_CONFIG = {
   defaultSlot: { start: 12 * 60, end: 13 * 60 },
 };
 const DEFAULT_DURATION = TIME_CONFIG.defaultSlot.end - TIME_CONFIG.defaultSlot.start;
+const INVITE_PARAM_PREFIX = "poll:";
+const INVITE_COPY_RESET_MS = 2000;
 
 const NORMALIZE = (value) =>
   value
@@ -69,6 +73,145 @@ const NORMALIZE = (value) =>
 
 const TIMEZONE_CATALOG = [{ zone: "Europe/Moscow", offset: "UTC+03:00", cities: ["Moscow (GMT+3)"] }];
 const DEFAULT_TIMEZONE = TIMEZONE_CATALOG[0].zone;
+
+const sanitizeShareCode = (code = "") => {
+  if (typeof code !== "string") return "";
+  return code.replace(/[^0-9a-z]/gi, "").toUpperCase();
+};
+
+const sanitizeBotUsername = (value = "") => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim().replace(/^@/, "");
+  return trimmed.replace(/[^0-9a-z_]/gi, "").toLowerCase();
+};
+
+const resolveBotUsername = () => {
+  const doc = typeof document !== "undefined" ? document : null;
+  const win = typeof window !== "undefined" ? window : null;
+  const sources = [
+    () => win?.__APP_CONFIG__?.botUsername,
+    () => win?.__TMA_BOT_USERNAME__,
+    () => doc?.body?.dataset?.botUsername,
+    () => doc?.documentElement?.dataset?.botUsername,
+  ];
+  for (const source of sources) {
+    const candidate = sanitizeBotUsername(source?.());
+    if (candidate) {
+      return candidate;
+    }
+  }
+  return "";
+};
+
+const BOT_USERNAME = resolveBotUsername();
+
+const buildInvitePayload = (shareCode) => {
+  const safe = sanitizeShareCode(shareCode);
+  return safe ? `${INVITE_PARAM_PREFIX}${safe}` : "";
+};
+
+const buildInviteLink = (shareCode) => {
+  const payload = buildInvitePayload(shareCode);
+  if (!payload || !BOT_USERNAME) {
+    return "";
+  }
+  return `https://t.me/${BOT_USERNAME}?startapp=${payload}`;
+};
+
+const parseInviteStartParam = (raw = "") => {
+  if (!raw) return "";
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+  const prefix = INVITE_PARAM_PREFIX.toLowerCase();
+  const normalized = decoded.toLowerCase().startsWith(prefix)
+    ? decoded.slice(INVITE_PARAM_PREFIX.length)
+    : decoded;
+  return sanitizeShareCode(normalized);
+};
+
+let cachedStartParam = null;
+let latestInviteLink = "";
+let inviteCopyResetTimer = null;
+
+const getStartParamValue = () => {
+  if (cachedStartParam !== null) {
+    return cachedStartParam;
+  }
+  const initParam = getTelegramInitData()?.start_param ?? "";
+  let queryParam = "";
+  if (typeof window !== "undefined") {
+    try {
+      queryParam = new URLSearchParams(window.location.search).get("tgWebAppStartParam") ?? "";
+    } catch {
+      queryParam = "";
+    }
+  }
+  cachedStartParam = (initParam || queryParam || "").trim();
+  return cachedStartParam;
+};
+
+const resetInviteLinkDetails = () => {
+  latestInviteLink = "";
+  clearTimeout(inviteCopyResetTimer);
+  inviteCopyResetTimer = null;
+  setInviteLinkDetails({ link: "", shareCode: "" });
+  setInviteCopyButtonState("idle");
+};
+
+const showInviteLinkForShareCode = (shareCode) => {
+  const safeCode = sanitizeShareCode(shareCode);
+  if (!safeCode) {
+    resetInviteLinkDetails();
+    return;
+  }
+  const inviteLink = buildInviteLink(safeCode);
+  latestInviteLink = inviteLink;
+  setInviteLinkDetails({ link: inviteLink, shareCode: safeCode });
+  setInviteCopyButtonState("idle");
+  if (!inviteLink && !BOT_USERNAME) {
+    console.warn(
+      "No Telegram bot username configured. Set data-bot-username on <body> to enable invite links."
+    );
+  }
+};
+
+const copyToClipboard = async (text) => {
+  if (!text) return;
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+};
+
+const handleCopyInviteLink = async () => {
+  if (!latestInviteLink) return;
+  try {
+    await copyToClipboard(latestInviteLink);
+    setInviteCopyButtonState("copied");
+  } catch (error) {
+    console.error("Failed to copy invite link", error);
+    setInviteCopyButtonState("idle");
+    return;
+  }
+  clearTimeout(inviteCopyResetTimer);
+  inviteCopyResetTimer = setTimeout(() => setInviteCopyButtonState("idle"), INVITE_COPY_RESET_MS);
+};
 
 const formatTimezoneDisplay = (zone) => {
   const entry = TIMEZONE_CATALOG.find((item) => item.zone === zone);
@@ -1470,6 +1613,7 @@ const handleTelegramBackButton = () => {
 };
 
 const handleNewPollClick = () => {
+  resetInviteLinkDetails();
   resetPlannerState();
   setFormFeedback("");
   setActiveScreen(SCREENS.CREATE);
@@ -1567,8 +1711,10 @@ const handleCreatePoll = async () => {
       selectedDates: new Map(state.selectedDates),
       telegramUser: state.telegramUser,
     });
+    const shareCode = sanitizeShareCode(poll.share_code ?? "");
+    showInviteLinkForShareCode(shareCode);
     setFormFeedback(
-      `Poll created! Share code ${poll.share_code} with participants.`,
+      `Poll created! Invite link ready below (share code ${shareCode}).`,
       "success"
     );
     recordPollHistoryEntry(poll, "created");
@@ -1664,12 +1810,14 @@ const attachEventHandlers = () => {
   refs.editOptionsNavButtons?.forEach((btn) =>
     btn.addEventListener("click", handleEditMonthNav)
   );
+  refs.copyInviteLinkButton?.addEventListener("click", handleCopyInviteLink);
   wirePressAnimation(refs.createPollButton);
   wirePressAnimation(refs.joinPollButton);
   wirePressAnimation(refs.continueVoteButton);
   wirePressAnimation(refs.submitVoteButton);
   wirePressAnimation(refs.saveEditDetailsButton);
   wirePressAnimation(refs.saveEditOptionsButton);
+  wirePressAnimation(refs.copyInviteLinkButton);
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("keydown", handleDocumentKeydown);
 };
@@ -1730,6 +1878,32 @@ const restoreActivePollIfNeeded = async () => {
   }
 };
 
+const tryHandleStartParamInvite = async () => {
+  const param = getStartParamValue();
+  if (!param) {
+    return "skipped";
+  }
+  const shareCode = parseInviteStartParam(param);
+  if (!shareCode) {
+    return "skipped";
+  }
+  try {
+    setJoinFeedback("Loading invite...", "info");
+    const poll = await fetchPollDetail({ shareCode });
+    if (!poll) {
+      setJoinFeedback("We couldn't find that invite link.", "error");
+      return "error";
+    }
+    setJoinFeedback("");
+    applyPollDetail(poll, "joined");
+    return "success";
+  } catch (error) {
+    console.error("Failed to open invite link", error);
+    setJoinFeedback("We couldn't open that invite link. Try joining with the code.", "error");
+    return "error";
+  }
+};
+
 const persistState = () => {
   saveUserState(getStorageId(), getState());
 };
@@ -1737,20 +1911,23 @@ const persistState = () => {
 const bootstrap = async () => {
   initTelegram();
   refs = initUI();
+  resetInviteLinkDetails();
   setTelegramBackButtonHandler(handleTelegramBackButton);
   if (refs.createPollButton) {
     refs.createPollButton.textContent = CREATE_LABEL_DEFAULT;
   }
   await hydrateState();
   syncTelegramIdentity();
-  const restoreStatus = await restoreActivePollIfNeeded();
+  const inviteStatus = await tryHandleStartParamInvite();
+  const restoreStatus =
+    inviteStatus === "success" ? "handled" : await restoreActivePollIfNeeded();
   syncScreenVisibility(getState().screen);
   syncTelegramBackButtonVisibility(getState().screen);
   if (getState().screen === SCREENS.POLL) {
     renderPollDetail();
   }
   renderPollSection();
-  if (restoreStatus !== "error") {
+  if (restoreStatus !== "error" && inviteStatus !== "error") {
     setJoinFeedback("");
   }
   setFormFeedback("");

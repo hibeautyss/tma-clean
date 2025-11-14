@@ -1,4 +1,8 @@
 const refs = {};
+const INVITE_COPY_LABELS = {
+  idle: "Copy link",
+  copied: "Copied!",
+};
 const EDIT_DETAILS_LABELS = {
   idle: "Save changes",
   saving: "Saving...",
@@ -87,6 +91,10 @@ export const initUI = () => {
   refs.timezoneEmpty = document.getElementById("timezoneEmpty");
   refs.timezoneClose = document.getElementById("timezoneClose");
   refs.createPollButton = document.getElementById("createPollButton");
+  refs.inviteLinkCard = document.getElementById("inviteLinkCard");
+  refs.inviteLinkValue = document.getElementById("inviteLinkValue");
+  refs.inviteShareCodeValue = document.getElementById("inviteShareCodeValue");
+  refs.copyInviteLinkButton = document.getElementById("copyInviteLinkButton");
   refs.pollTabs = document.querySelectorAll("[data-poll-status]");
   refs.createdOnlyToggle = document.getElementById("createdOnlyToggle");
   refs.pollsList = document.getElementById("pollsList");
@@ -384,6 +392,29 @@ export const setFormFeedback = (message = "", tone = "info") => {
   refs.formFeedback.hidden = !content;
   refs.formFeedback.classList.toggle("is-error", tone === "error");
   refs.formFeedback.classList.toggle("is-success", tone === "success");
+};
+
+export const setInviteLinkDetails = ({ link = "", shareCode = "" } = {}) => {
+  if (!refs.inviteLinkCard) return;
+  const safeLink = typeof link === "string" ? link.trim() : "";
+  const safeCode = typeof shareCode === "string" ? shareCode.trim() : "";
+  if (refs.inviteLinkValue) {
+    refs.inviteLinkValue.textContent = safeLink;
+  }
+  if (refs.inviteShareCodeValue) {
+    refs.inviteShareCodeValue.textContent = safeCode || "—";
+  }
+  if (refs.copyInviteLinkButton) {
+    refs.copyInviteLinkButton.disabled = !safeLink;
+  }
+  refs.inviteLinkCard.hidden = !safeLink;
+};
+
+export const setInviteCopyButtonState = (state = "idle") => {
+  if (!refs.copyInviteLinkButton) return;
+  const label =
+    state === "copied" ? INVITE_COPY_LABELS.copied : INVITE_COPY_LABELS.idle;
+  refs.copyInviteLinkButton.textContent = label;
 };
 
 export const setJoinFeedback = (message = "", tone = "info") => {
