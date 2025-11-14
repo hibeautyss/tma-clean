@@ -21,7 +21,7 @@ const state = {
   timezoneSearch: "",
   today: initialToday,
   currentView: new Date(initialToday.getFullYear(), initialToday.getMonth(), 1),
-  screen: "create",
+  screen: "dashboard",
   pollHistory: [],
   pollFilters: {
     status: "live",
