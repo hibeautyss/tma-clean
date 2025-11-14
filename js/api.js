@@ -5,6 +5,23 @@ const SUPABASE_REST_URL = `${SUPABASE_URL}/rest/v1`;
 
 const buildKey = (telegramId) => `${STORAGE_PREFIX}:${telegramId ?? "guest"}`;
 
+const buildStoredPollReference = (state) => {
+  if (!state || typeof state !== "object") {
+    return null;
+  }
+  const poll = state.activePoll ?? null;
+  const stored = state.activePollRef ?? null;
+  const pollId = poll?.id ?? stored?.pollId ?? null;
+  const shareCode = poll?.share_code ?? stored?.shareCode ?? null;
+  if (!pollId && !shareCode) {
+    return null;
+  }
+  return {
+    pollId,
+    shareCode,
+  };
+};
+
 const prepareForStorage = (state) => ({
   selectedDates: Array.from(state.selectedDates?.entries?.() ?? []),
   specifyTimesEnabled: Boolean(state.specifyTimesEnabled),
@@ -18,6 +35,8 @@ const prepareForStorage = (state) => ({
     status: state.pollFilters?.status ?? "live",
     createdOnly: Boolean(state.pollFilters?.createdOnly),
   },
+  activePollRef: buildStoredPollReference(state),
+  activePollRelation: state.activePollRelation === "created" ? "created" : "joined",
 });
 
 const baseHeaders = Object.freeze({

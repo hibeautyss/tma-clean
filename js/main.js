@@ -213,6 +213,46 @@ const dedupePollHistory = (entries = []) => {
   return cleaned;
 };
 
+const normalizePollReference = (reference) => {
+  if (!reference || typeof reference !== "object") {
+    return null;
+  }
+  const pollId = reference.pollId ?? null;
+  const shareCode = reference.shareCode ?? null;
+  if (!pollId && !shareCode) {
+    return null;
+  }
+  return { pollId, shareCode };
+};
+
+const buildPollReference = (poll) => {
+  if (!poll) {
+    return null;
+  }
+  const pollId = poll.id ?? null;
+  const shareCode = poll.share_code ?? null;
+  if (!pollId && !shareCode) {
+    return null;
+  }
+  return { pollId, shareCode };
+};
+
+const clearActivePollState = () => {
+  updateState({
+    activePoll: null,
+    activePollRef: null,
+    activePollVotes: [],
+    voteDraft: null,
+    voteComment: "",
+    voteName: "",
+    nameModalOpen: false,
+    hasSubmittedVote: false,
+    canManageActivePoll: false,
+    manageMenuOpen: false,
+    activePollRelation: "joined",
+  });
+};
+
 const renderPollSection = () => {
   const filters = getPollFilters();
   const history = dedupePollHistory(
@@ -824,6 +864,7 @@ const applyPollDetail = (pollData, relation = "joined") => {
   const canManage = derivedRelation === "created";
   updateState({
     activePoll: normalizedPoll,
+    activePollRef: buildPollReference(normalizedPoll),
     activePollVotes: participants,
     voteDraft: buildInitialDraft(normalizedPoll),
     voteComment: "",
@@ -1193,6 +1234,7 @@ const refreshActivePoll = async () => {
     const previousMenuState = Boolean(getState().manageMenuOpen);
     updateState({
       activePoll: { ...normalized, relation: derivedRelation },
+      activePollRef: buildPollReference(latest),
       activePollVotes: mapVotesToParticipants(latest.votes ?? []),
       hasSubmittedVote: alreadySubmitted,
       activePollRelation: derivedRelation,
@@ -1489,6 +1531,40 @@ const hydrateState = async () => {
   });
 };
 
+const restoreActivePollIfNeeded = async () => {
+  if (getState().screen !== SCREENS.POLL || getState().activePoll) {
+    return "skipped";
+  }
+  const reference = normalizePollReference(getState().activePollRef);
+  if (!reference) {
+    updateState({ screen: SCREENS.DASHBOARD });
+    schedulePersist();
+    return "fallback";
+  }
+  try {
+    const poll = await fetchPollDetail({
+      pollId: reference.pollId ?? undefined,
+      shareCode: reference.shareCode ?? undefined,
+    });
+    if (!poll) {
+      clearActivePollState();
+      updateState({ screen: SCREENS.DASHBOARD });
+      setJoinFeedback("We couldn't reload that poll. Please join it again.", "error");
+      schedulePersist();
+      return "error";
+    }
+    applyPollDetail(poll, getState().activePollRelation ?? "joined");
+    return "success";
+  } catch (error) {
+    console.error("Failed to restore poll from saved state", error);
+    clearActivePollState();
+    updateState({ screen: SCREENS.DASHBOARD });
+    setJoinFeedback("We couldn't reload that poll. Please join it again.", "error");
+    schedulePersist();
+    return "error";
+  }
+};
+
 const persistState = () => {
   saveUserState(getStorageId(), getState());
 };
@@ -1500,12 +1576,15 @@ const bootstrap = async () => {
     refs.createPollButton.textContent = CREATE_LABEL_DEFAULT;
   }
   await hydrateState();
+  const restoreStatus = await restoreActivePollIfNeeded();
   syncScreenVisibility(getState().screen);
   if (getState().screen === SCREENS.POLL) {
     renderPollDetail();
   }
   renderPollSection();
-  setJoinFeedback("");
+  if (restoreStatus !== "error") {
+    setJoinFeedback("");
+  }
   setFormFeedback("");
   attachEventHandlers();
   renderAll();
